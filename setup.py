@@ -3,6 +3,12 @@ import os
 
 version = '0.1'
 
+entry_points = {
+    'openprocurement.api.plugins': [
+        'flash = openprocurement.auctions.flash:includeme'
+    ]
+}
+
 setup(name='openprocurement.auctions.flash',
       version=version,
       description="",
@@ -14,19 +20,17 @@ setup(name='openprocurement.auctions.flash',
         "Programming Language :: Python",
         ],
       keywords='',
-      author='',
-      author_email='',
-      url='http://svn.plone.org/svn/collective/',
-      license='GPL',
+      author='Quintagroup, Ltd.',
+      author_email='info@quintagroup.com',
+      license='Apache License 2.0',
+      url='https://github.com/openprocurement/openprocurement.auctions.flash',
       packages=find_packages(exclude=['ez_setup']),
       namespace_packages=['openprocurement', 'openprocurement.auctions'],
       include_package_data=True,
       zip_safe=False,
       install_requires=[
           'setuptools',
-          # -*- Extra requirements: -*-
+          'openprocurement.api',
       ],
-      entry_points="""
-      # -*- Entry points: -*-
-      """,
+      entry_points=entry_points,
       )
