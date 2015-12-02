@@ -1,27 +1,20 @@
 # -*- coding: utf-8 -*-
-import os
 from couchdb_schematics.document import SchematicsDocument
-from datetime import datetime, timedelta
-from iso8601 import parse_date, ParseError
-from pytz import timezone
+from datetime import timedelta
 from pyramid.security import Allow
-from schematics.exceptions import ConversionError, ValidationError
-from schematics.models import Model as SchematicsModel
-from schematics.transforms import whitelist, blacklist, export_loop, convert
-from schematics.types import StringType, FloatType, IntType, URLType, BooleanType, BaseType, EmailType, MD5Type
+from schematics.exceptions import ValidationError
+from schematics.transforms import whitelist, blacklist
+from schematics.types import StringType, IntType, URLType, BooleanType, BaseType
 from schematics.types.compound import ModelType, DictType
 from schematics.types.serializable import serializable
-from uuid import uuid4
 from barbecue import vnmax
 from zope.interface import implementer, Interface
-from openprocurement.api.models import get_now, CPV_CODES, ORA_CODES, schematics_embedded_role, schematics_default_role, IsoDateTimeType, ListType
+from openprocurement.api.models import schematics_embedded_role, schematics_default_role, IsoDateTimeType, ListType
 from openprocurement.api.models import Document, Parameter, LotValue, Bid, Question, Complaint, Cancellation, Contract, Award
 from openprocurement.api.models import Model, Item, Value, PeriodEndRequired, Period, Organization, Revision, Feature, Lot
 from openprocurement.api.models import validate_cpv_group, validate_items_uniq, validate_features_uniq, validate_lots_uniq
 
 STAND_STILL_TIME = timedelta(days=1)
-schematics_embedded_role = SchematicsDocument.Options.roles['embedded'] + blacklist("__parent__")
-schematics_default_role = SchematicsDocument.Options.roles['default'] + blacklist("__parent__")
 
 
 class IAuction(Interface):
@@ -32,6 +25,7 @@ def get_auction(model):
     while not isinstance(model, Auction):
         model = model.__parent__
     return model
+
 
 class Document(Document):
 
@@ -44,8 +38,6 @@ class Document(Document):
                 raise ValidationError(u"relatedItem should be one of lots")
             if data.get('documentOf') == 'item' and relatedItem not in [i.id for i in auction.items]:
                 raise ValidationError(u"relatedItem should be one of items")
-
-
 
 
 class Parameter(Parameter):

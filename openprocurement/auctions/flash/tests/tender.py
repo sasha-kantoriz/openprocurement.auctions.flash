@@ -485,9 +485,11 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.status, '201 Created')
         self.assertEqual(response.content_type, 'application/json')
         auction = response.json['data']
-        self.assertEqual(set(auction), set([u'id', u'dateModified', u'auctionID', u'status', u'enquiryPeriod',
-                                           u'tenderPeriod', u'minimalStep', u'items', u'value', u'procuringEntity',
-                                           u'procurementMethod', u'awardCriteria', u'submissionMethod', u'title']))
+        self.assertEqual(set(auction), set([
+            u'id', u'dateModified', u'auctionID', u'status', u'enquiryPeriod',
+            u'tenderPeriod', u'minimalStep', u'items', u'value', u'procuringEntity',
+            u'procurementMethod', u'awardCriteria', u'submissionMethod', u'title'
+        ]))
         self.assertNotEqual(data['id'], auction['id'])
         self.assertNotEqual(data['doc_id'], auction['id'])
         self.assertNotEqual(data['auctionID'], auction['auctionID'])

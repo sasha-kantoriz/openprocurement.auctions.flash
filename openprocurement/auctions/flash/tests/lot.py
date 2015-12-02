@@ -2,7 +2,7 @@
 import unittest
 from datetime import timedelta
 
-from openprocurement.auctions.flash.models import get_now
+from openprocurement.api.models import get_now
 from openprocurement.auctions.flash.tests.base import BaseWebTest, BaseAuctionWebTest, test_auction_data, test_lots
 
 

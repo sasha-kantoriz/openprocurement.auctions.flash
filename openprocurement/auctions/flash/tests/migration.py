@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from openprocurement.api.migration import migrate_data, get_db_schema_version, set_db_schema_version, SCHEMA_VERSION
-from openprocurement.auctions.flash.tests.base import BaseWebTest, test_auction_data
-from email.header import Header
+from openprocurement.api.migration import migrate_data, get_db_schema_version, SCHEMA_VERSION
+from openprocurement.auctions.flash.tests.base import BaseWebTest
 
 
 class MigrateTest(BaseWebTest):

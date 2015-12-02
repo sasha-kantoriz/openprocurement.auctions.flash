@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 from barbecue import chef
 from base64 import b64encode
-from cornice.resource import resource, view
+from cornice.resource import resource
 from cornice.util import json_error
 from couchdb.http import ResourceConflict
 from email.header import decode_header
@@ -10,7 +10,8 @@ from json import dumps
 from jsonpatch import make_patch, apply_patch as _apply_patch
 from logging import getLogger
 from openprocurement.api.models import Revision, Period, get_now
-from openprocurement.api.utils import update_logging_context, context_unpack, VERSION, ROUTE_PREFIX, generate_id, get_revision_changes, set_modetest_titles
+#from openprocurement.api.utils import update_logging_context, context_unpack, VERSION, ROUTE_PREFIX, generate_id, get_revision_changes, set_modetest_titles
+from openprocurement.api.utils import update_logging_context, context_unpack, generate_id, get_revision_changes, set_modetest_titles
 from openprocurement.auctions.flash.models import Auction, Document, Award
 from openprocurement.auctions.flash.traversal import factory
 from pkg_resources import get_distribution
@@ -19,10 +20,6 @@ from schematics.exceptions import ModelValidationError
 from time import sleep
 from urllib import quote
 from urlparse import urlparse, parse_qs
-from uuid import uuid4
-from webob.multidict import NestedMultiDict
-from pyramid.exceptions import URLDecodeError
-from pyramid.compat import decode_path_info
 
 
 PKG = get_distribution(__package__)
@@ -84,7 +81,7 @@ def upload_file(request):
     key = generate_id()
     document_route = request.matched_route.name.replace("collection_", "")
     document_path = request.current_route_path(_route_name=document_route, document_id=document.id, _query={'download': key})
-    document.url = '/'+'/'.join(document_path.split('/')[3:])
+    document.url = '/' + '/'.join(document_path.split('/')[3:])
     conn = getattr(request.registry, 's3_connection', None)
     if conn:
         bucket = conn.get_bucket(request.registry.bucket_name)

@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
+from openprocurement.api.models import get_now
 from openprocurement.api.utils import (
     json_view,
     context_unpack,
 )
-from openprocurement.auctions.flash.models import STAND_STILL_TIME, get_now
+from openprocurement.auctions.flash.models import STAND_STILL_TIME
 from openprocurement.auctions.flash.utils import (
     apply_patch,
     save_auction,

@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 from logging import getLogger
-from binascii import hexlify, unhexlify
-from Crypto.Cipher import AES
+from openprocurement.api.models import get_now
 from openprocurement.api.utils import (
     context_unpack,
     decrypt,
@@ -19,7 +18,6 @@ from openprocurement.auctions.flash.design import (
     auctions_real_by_local_seq_view,
     auctions_test_by_local_seq_view,
 )
-from openprocurement.auctions.flash.models import get_now
 from openprocurement.auctions.flash.utils import (
     generate_auction_id,
     save_auction,

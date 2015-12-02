@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-from openprocurement.auctions.flash.models import IAuction, Auction, Bid, Award, Document, Question, Complaint, Contract, Cancellation, Lot, get_now
+from openprocurement.api.models import get_now
+from openprocurement.auctions.flash.models import IAuction, Auction, Bid, Award, Document, Question, Complaint, Contract, Cancellation, Lot
 from schematics.exceptions import ModelValidationError, ModelConversionError
 from openprocurement.auctions.flash.utils import apply_data_patch, update_logging_context
 
