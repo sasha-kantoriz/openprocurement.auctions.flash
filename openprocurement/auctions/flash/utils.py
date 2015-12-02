@@ -7,11 +7,9 @@ from couchdb.http import ResourceConflict
 from email.header import decode_header
 from functools import partial
 from json import dumps
-from jsonpatch import make_patch, apply_patch as _apply_patch
 from logging import getLogger
 from openprocurement.api.models import Revision, Period, get_now
-#from openprocurement.api.utils import update_logging_context, context_unpack, VERSION, ROUTE_PREFIX, generate_id, get_revision_changes, set_modetest_titles
-from openprocurement.api.utils import update_logging_context, context_unpack, generate_id, get_revision_changes, set_modetest_titles
+from openprocurement.api.utils import update_logging_context, context_unpack, generate_id, get_revision_changes, set_modetest_titles, apply_data_patch
 from openprocurement.auctions.flash.models import Auction, Document, Award
 from openprocurement.auctions.flash.traversal import factory
 from pkg_resources import get_distribution
@@ -136,36 +134,6 @@ def get_file(request):
             return request.response
         request.errors.add('url', 'download', 'Not Found')
         request.errors.status = 404
-
-
-def prepare_patch(changes, orig, patch, basepath=''):
-    if isinstance(patch, dict):
-        for i in patch:
-            if i in orig:
-                prepare_patch(changes, orig[i], patch[i], '{}/{}'.format(basepath, i))
-            else:
-                changes.append({'op': 'add', 'path': '{}/{}'.format(basepath, i), 'value': patch[i]})
-    elif isinstance(patch, list):
-        if len(patch) < len(orig):
-            for i in reversed(range(len(patch), len(orig))):
-                changes.append({'op': 'remove', 'path': '{}/{}'.format(basepath, i)})
-        for i, j in enumerate(patch):
-            if len(orig) > i:
-                prepare_patch(changes, orig[i], patch[i], '{}/{}'.format(basepath, i))
-            else:
-                changes.append({'op': 'add', 'path': '{}/{}'.format(basepath, i), 'value': j})
-    else:
-        for x in make_patch(orig, patch).patch:
-            x['path'] = '{}{}'.format(basepath, x['path'])
-            changes.append(x)
-
-
-def apply_data_patch(item, changes):
-    patch_changes = []
-    prepare_patch(patch_changes, item, changes)
-    if not patch_changes:
-        return {}
-    return _apply_patch(item, patch_changes)
 
 
 def auction_serialize(request, auction_data, fields):

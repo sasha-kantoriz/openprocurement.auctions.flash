@@ -262,6 +262,19 @@ class Auction(SchematicsDocument, Model):
 
     __name__ = ''
 
+    def get_role(self):
+        root = self.__parent__
+        request = root.request
+        if request.authenticated_role == 'Administrator':
+            role = 'Administrator'
+        elif request.authenticated_role == 'chronograph':
+            role = 'chronograph'
+        elif request.authenticated_role == 'auction':
+            role = 'auction_{}'.format(request.method.lower())
+        else:
+            role = 'edit_{}'.format(request.context.status)
+        return role
+
     def __acl__(self):
         acl = [
             #(Allow, '{}_{}'.format(i.owner, i.owner_token), 'create_award_complaint')
