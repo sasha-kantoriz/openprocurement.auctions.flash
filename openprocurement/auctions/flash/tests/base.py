@@ -41,19 +41,12 @@ test_auction_data = {
     },
     "items": [
         {
-            "description": u"футляри до державних нагород",
+            "description": u"Земля для військовослужбовців",
             "classification": {
-                "scheme": u"CPV",
-                "id": u"44617100-9",
-                "description": u"Cartons"
+                "scheme": u"CAV",
+                "id": u"70122000-2",
+                "description": u"Земля"
             },
-            "additionalClassifications": [
-                {
-                    "scheme": u"ДКПП",
-                    "id": u"17.21.1",
-                    "description": u"папір і картон гофровані, паперова й картонна тара"
-                }
-            ],
             "unit": {
                 "name": u"item",
                 "code": u"44617100-9"
