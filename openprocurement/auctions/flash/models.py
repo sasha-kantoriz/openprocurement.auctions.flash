@@ -43,6 +43,7 @@ class CAVClassification(Classification):
 class Item(Item):
 
     classification = ModelType(CAVClassification, required=True)
+    additionalClassifications = ListType(ModelType(Classification), default=list(), validators=[validate_dkpp])
 
 
 def get_auction(model):
