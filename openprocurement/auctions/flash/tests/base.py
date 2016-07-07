@@ -10,27 +10,29 @@ from openprocurement.api.utils import VERSION
 
 
 now = datetime.now()
+test_organization = {
+    "name": u"Державне управління справами",
+    "identifier": {
+        "scheme": u"UA-EDR",
+        "id": u"00037256",
+        "uri": u"http://www.dus.gov.ua/"
+    },
+    "address": {
+        "countryName": u"Україна",
+        "postalCode": u"01220",
+        "region": u"м. Київ",
+        "locality": u"м. Київ",
+        "streetAddress": u"вул. Банкова, 11, корпус 1"
+    },
+    "contactPoint": {
+        "name": u"Державне управління справами",
+        "telephone": u"0440000000"
+    }
+}
+test_procuringEntity = test_organization.copy()
 test_auction_data = {
     "title": u"футляри до державних нагород",
-    "procuringEntity": {
-        "name": u"Державне управління справами",
-        "identifier": {
-            "scheme": u"UA-EDR",
-            "id": u"00037256",
-            "uri": u"http://www.dus.gov.ua/"
-        },
-        "address": {
-            "countryName": u"Україна",
-            "postalCode": u"01220",
-            "region": u"м. Київ",
-            "locality": u"м. Київ",
-            "streetAddress": u"вул. Банкова, 11, корпус 1"
-        },
-        "contactPoint": {
-            "name": u"Державне управління справами",
-            "telephone": u"0440000000"
-        }
-    },
+    "procuringEntity": test_procuringEntity,
     "value": {
         "amount": 100,
         "currency": u"UAH"
@@ -374,6 +376,7 @@ class BaseAuctionWebTest(BaseWebTest):
                 item['relatedLot'] = lots[i % len(lots)]['id']
         response = self.app.post_json('/auctions', {'data': data})
         auction = response.json['data']
+        self.auction_token = response.json['access']['token']
         self.auction_id = auction['id']
         status = auction['status']
         if self.initial_bids:

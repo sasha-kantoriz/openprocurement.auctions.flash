@@ -1,11 +1,13 @@
 # -*- coding: utf-8 -*-
 import unittest
+from copy import deepcopy
 from datetime import timedelta
 
 from openprocurement.api import ROUTE_PREFIX
 from openprocurement.api.models import get_now
 from openprocurement.auctions.flash.models import Auction
-from openprocurement.auctions.flash.tests.base import test_auction_data, BaseWebTest, BaseAuctionWebTest
+from openprocurement.auctions.flash.tests.base import test_auction_data, test_organization, BaseWebTest, BaseAuctionWebTest
+
 
 
 class AuctionTest(BaseWebTest):
@@ -108,16 +110,25 @@ class AuctionResourceTest(BaseWebTest):
             self.assertEqual(response.content_type, 'application/json')
             auctions.append(response.json['data'])
 
-        response = self.app.get('/auctions')
-        self.assertEqual(response.status, '200 OK')
+        ids = ','.join([i['id'] for i in auctions])
+
+        while True:
+            response = self.app.get('/auctions')
+            self.assertTrue(ids.startswith(','.join([i['id'] for i in response.json['data']])))
+            if len(response.json['data']) == 3:
+                break
+
         self.assertEqual(len(response.json['data']), 3)
         self.assertEqual(set(response.json['data'][0]), set([u'id', u'dateModified']))
         self.assertEqual(set([i['id'] for i in response.json['data']]), set([i['id'] for i in auctions]))
         self.assertEqual(set([i['dateModified'] for i in response.json['data']]), set([i['dateModified'] for i in auctions]))
         self.assertEqual([i['dateModified'] for i in response.json['data']], sorted([i['dateModified'] for i in auctions]))
 
-        response = self.app.get('/auctions?offset={}'.format(offset))
-        self.assertEqual(response.status, '200 OK')
+        while True:
+            response = self.app.get('/auctions?offset={}'.format(offset))
+            self.assertEqual(response.status, '200 OK')
+            if len(response.json['data']) == 1:
+                break
         self.assertEqual(len(response.json['data']), 1)
 
         response = self.app.get('/auctions?limit=2')
@@ -176,8 +187,11 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.status, '201 Created')
         self.assertEqual(response.content_type, 'application/json')
 
-        response = self.app.get('/auctions?mode=test')
-        self.assertEqual(response.status, '200 OK')
+        while True:
+            response = self.app.get('/auctions?mode=test')
+            self.assertEqual(response.status, '200 OK')
+            if len(response.json['data']) == 1:
+                break
         self.assertEqual(len(response.json['data']), 1)
 
         response = self.app.get('/auctions?mode=_all_')
@@ -197,7 +211,15 @@ class AuctionResourceTest(BaseWebTest):
             self.assertEqual(response.content_type, 'application/json')
             auctions.append(response.json['data'])
 
-        response = self.app.get('/auctions?feed=changes')
+        ids = ','.join([i['id'] for i in auctions])
+
+        while True:
+            response = self.app.get('/auctions?feed=changes')
+            self.assertTrue(ids.startswith(','.join([i['id'] for i in response.json['data']])))
+            if len(response.json['data']) == 3:
+                break
+
+        self.assertEqual(','.join([i['id'] for i in response.json['data']]), ids)
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(len(response.json['data']), 3)
         self.assertEqual(set(response.json['data'][0]), set([u'id', u'dateModified']))
@@ -261,13 +283,48 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.status, '201 Created')
         self.assertEqual(response.content_type, 'application/json')
 
-        response = self.app.get('/auctions?feed=changes&mode=test')
-        self.assertEqual(response.status, '200 OK')
+        while True:
+            response = self.app.get('/auctions?feed=changes&mode=test')
+            self.assertEqual(response.status, '200 OK')
+            if len(response.json['data']) == 1:
+                break
         self.assertEqual(len(response.json['data']), 1)
 
         response = self.app.get('/auctions?feed=changes&mode=_all_')
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(len(response.json['data']), 4)
+
+    def test_listing_draft(self):
+        response = self.app.get('/auctions')
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(len(response.json['data']), 0)
+
+        auctions = []
+        data = test_auction_data.copy()
+        data.update({'status': 'draft'})
+
+        for i in range(3):
+            response = self.app.post_json('/auctions', {'data': test_auction_data})
+            self.assertEqual(response.status, '201 Created')
+            self.assertEqual(response.content_type, 'application/json')
+            auctions.append(response.json['data'])
+            response = self.app.post_json('/auctions', {'data': data})
+            self.assertEqual(response.status, '201 Created')
+            self.assertEqual(response.content_type, 'application/json')
+
+        ids = ','.join([i['id'] for i in auctions])
+
+        while True:
+            response = self.app.get('/auctions')
+            self.assertTrue(ids.startswith(','.join([i['id'] for i in response.json['data']])))
+            if len(response.json['data']) == 3:
+                break
+
+        self.assertEqual(len(response.json['data']), 3)
+        self.assertEqual(set(response.json['data'][0]), set([u'id', u'dateModified']))
+        self.assertEqual(set([i['id'] for i in response.json['data']]), set([i['id'] for i in auctions]))
+        self.assertEqual(set([i['dateModified'] for i in response.json['data']]), set([i['dateModified'] for i in auctions]))
+        self.assertEqual([i['dateModified'] for i in response.json['data']], sorted([i['dateModified'] for i in auctions]))
 
     def test_create_auction_invalid(self):
         request_path = '/auctions'
@@ -317,6 +374,14 @@ class AuctionResourceTest(BaseWebTest):
                 u'location': u'body', u'name': u'data'}
         ])
 
+        response = self.app.post_json(request_path, {'data': {'procurementMethodType': 'invalid_value'}}, status=415)
+        self.assertEqual(response.status, '415 Unsupported Media Type')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': u'Not implemented', u'location': u'data', u'name': u'procurementMethodType'}
+        ])
+
         response = self.app.post_json(request_path, {'data': {
                                       'invalid_field': 'invalid_value'}}, status=422)
         self.assertEqual(response.status, '422 Unprocessable Entity')
@@ -341,7 +406,7 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['status'], 'error')
         self.assertIn({u'description': [u"Value must be one of ['open', 'selective', 'limited']."], u'location': u'body', u'name': u'procurementMethod'}, response.json['errors'])
-        self.assertIn({u'description': [u'This field is required.'], u'location': u'body', u'name': u'tenderPeriod'}, response.json['errors'])
+        self.assertIn({u'description': [u'This field is required.'], u'location': u'body', u'name': u'auctionPeriod'}, response.json['errors'])
         self.assertIn({u'description': [u'This field is required.'], u'location': u'body', u'name': u'minimalStep'}, response.json['errors'])
         self.assertIn({u'description': [u'This field is required.'], u'location': u'body', u'name': u'items'}, response.json['errors'])
         self.assertIn({u'description': [u'This field is required.'], u'location': u'body', u'name': u'enquiryPeriod'}, response.json['errors'])
@@ -364,39 +429,29 @@ class AuctionResourceTest(BaseWebTest):
             {u'description': {u'endDate': [u'date value out of range']}, u'location': u'body', u'name': u'enquiryPeriod'}
         ])
 
-        data = test_auction_data['tenderPeriod']
-        test_auction_data['tenderPeriod'] = {'startDate': '2014-10-31T00:00:00', 'endDate': '2014-10-01T00:00:00'}
+        data = test_auction_data['auctionPeriod']
+        test_auction_data['auctionPeriod'] = {'startDate': '2014-10-31T00:00:00', 'endDate': '2014-10-01T00:00:00'}
         response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
-        test_auction_data['tenderPeriod'] = data
+        test_auction_data['auctionPeriod'] = data
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['status'], 'error')
         self.assertEqual(response.json['errors'], [
-            {u'description': {u'startDate': [u'period should begin before its end']}, u'location': u'body', u'name': u'tenderPeriod'}
+            {u'description': {u'startDate': [u'period should begin before its end']}, u'location': u'body', u'name': u'auctionPeriod'}
         ])
 
-        data = test_auction_data['tenderPeriod']
-        test_auction_data['tenderPeriod'] = {'startDate': '2014-10-31T00:00:00', 'endDate': '2015-10-01T00:00:00'}
+        data = test_auction_data['auctionPeriod']
+        test_auction_data['auctionPeriod'] = {'startDate': '2014-10-31T00:00:00', 'endDate': '2015-10-01T00:00:00'}
         response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
-        test_auction_data['tenderPeriod'] = data
+        test_auction_data['auctionPeriod'] = data
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['status'], 'error')
         self.assertEqual(response.json['errors'], [
-            {u'description': [u'period should begin after enquiryPeriod'], u'location': u'body', u'name': u'tenderPeriod'}
+            {u'description': [u'period should begin after enquiryPeriod'], u'location': u'body', u'name': u'auctionPeriod'}
         ])
 
         now = get_now()
-        test_auction_data['auctionPeriod'] = {'startDate': now.isoformat(), 'endDate': now.isoformat()}
-        response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
-        del test_auction_data['auctionPeriod']
-        self.assertEqual(response.status, '422 Unprocessable Entity')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['status'], 'error')
-        self.assertEqual(response.json['errors'], [
-            {u'description': [u'period should begin after tenderPeriod'], u'location': u'body', u'name': u'auctionPeriod'}
-        ])
-
         test_auction_data['awardPeriod'] = {'startDate': now.isoformat(), 'endDate': now.isoformat()}
         response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
         del test_auction_data['awardPeriod']
@@ -404,7 +459,7 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['status'], 'error')
         self.assertEqual(response.json['errors'], [
-            {u'description': [u'period should begin after tenderPeriod'], u'location': u'body', u'name': u'awardPeriod'}
+            {u'description': [u'period should begin after auctionPeriod'], u'location': u'body', u'name': u'awardPeriod'}
         ])
 
         test_auction_data['auctionPeriod'] = {'startDate': (now + timedelta(days=15)).isoformat(), 'endDate': (now + timedelta(days=15)).isoformat()}
@@ -417,6 +472,17 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.json['status'], 'error')
         self.assertEqual(response.json['errors'], [
             {u'description': [u'period should begin after auctionPeriod'], u'location': u'body', u'name': u'awardPeriod'}
+        ])
+
+        data = test_auction_data['minimalStep']
+        test_auction_data['minimalStep'] = {'amount': '1000.0'}
+        response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
+        test_auction_data['minimalStep'] = data
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': [u'value should be less than value of auction'], u'location': u'body', u'name': u'minimalStep'}
         ])
 
         data = test_auction_data['minimalStep']
@@ -441,24 +507,21 @@ class AuctionResourceTest(BaseWebTest):
             {u'description': [u'currency should be identical to currency of value of auction'], u'location': u'body', u'name': u'minimalStep'}
         ])
 
-        test_auction_data["items"][0]["additionalClassifications"] = [{
-            "scheme": u"Не ДКПП",
-            "id": u"68.10.11",
-            "description": u"Продаж або купівля житлових будинків і прилеглої землі"
-        }]
+        data = test_auction_data["items"][0]["additionalClassifications"][0]["scheme"]
+        test_auction_data["items"][0]["additionalClassifications"][0]["scheme"] = 'Не ДКПП'
         response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
-        del test_auction_data["items"][0]["additionalClassifications"]
+        test_auction_data["items"][0]["additionalClassifications"][0]["scheme"] = data
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['status'], 'error')
         self.assertEqual(response.json['errors'], [
-            {u'description': [{u'additionalClassifications': [u"One of additional classifications should be '\u0414\u041a\u041f\u041f'"]}], u'location': u'body', u'name': u'items'}
+            {u'description': [{u'additionalClassifications': [u"One of additional classifications should be one of [ДКПП, NONE, ДК003, ДК015, ДК018]."]}], u'location': u'body', u'name': u'items'}
         ])
 
-        data = test_auction_data["procuringEntity"]["contactPoint"]["telephone"]
-        del test_auction_data["procuringEntity"]["contactPoint"]["telephone"]
+        data = test_organization["contactPoint"]["telephone"]
+        del test_organization["contactPoint"]["telephone"]
         response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
-        test_auction_data["procuringEntity"]["contactPoint"]["telephone"] = data
+        test_organization["contactPoint"]["telephone"] = data
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['status'], 'error')
@@ -468,7 +531,7 @@ class AuctionResourceTest(BaseWebTest):
 
         data = test_auction_data["items"][0].copy()
         classification = data['classification'].copy()
-        classification["id"] = u'66113000-5'
+        classification["id"] = u'19212310-1'
         data['classification'] = classification
         test_auction_data["items"] = [test_auction_data["items"][0], data]
         response = self.app.post_json(request_path, {'data': test_auction_data}, status=422)
@@ -477,7 +540,20 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['status'], 'error')
         self.assertEqual(response.json['errors'], [
-            {u'description': [u'CAV group of items be identical'], u'location': u'body', u'name': u'items'}
+            {u'description': [u'CPV group of items be identical'], u'location': u'body', u'name': u'items'}
+        ])
+
+        procuringEntity = test_auction_data["procuringEntity"]
+        data = test_auction_data["procuringEntity"].copy()
+        del data['kind']
+        test_auction_data["procuringEntity"] = data
+        response = self.app.post_json(request_path, {'data': test_auction_data}, status=403)
+        test_auction_data["procuringEntity"] = procuringEntity
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': u"'' procuringEntity cannot publish this type of procedure. Only general, special, defense, other are allowed.", u'location': u'procuringEntity', u'name': u'kind'}
         ])
 
     def test_create_auction_generated(self):
@@ -488,14 +564,43 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.status, '201 Created')
         self.assertEqual(response.content_type, 'application/json')
         auction = response.json['data']
-        self.assertEqual(set(auction), set([
-            u'id', u'dateModified', u'auctionID', u'status', u'enquiryPeriod',
-            u'tenderPeriod', u'minimalStep', u'items', u'value', u'procuringEntity',
-            u'procurementMethod', u'awardCriteria', u'submissionMethod', u'title'
-        ]))
+        if 'procurementMethodDetails' in auction:
+            auction.pop('procurementMethodDetails')
+        self.assertEqual(set(auction), set([u'procurementMethodType', u'id', u'dateModified', u'auctionID', u'status', u'enquiryPeriod',
+                                           u'auctionPeriod', u'minimalStep', u'items', u'value', u'procuringEntity', u'next_check',
+                                           u'procurementMethod', u'awardCriteria', u'submissionMethod', u'title', u'owner']))
         self.assertNotEqual(data['id'], auction['id'])
         self.assertNotEqual(data['doc_id'], auction['id'])
         self.assertNotEqual(data['auctionID'], auction['auctionID'])
+
+    def test_create_auction_draft(self):
+        data = test_auction_data.copy()
+        data.update({'status': 'draft'})
+        response = self.app.post_json('/auctions', {'data': data})
+        self.assertEqual(response.status, '201 Created')
+        self.assertEqual(response.content_type, 'application/json')
+        auction = response.json['data']
+        self.assertEqual(auction['status'], 'draft')
+
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'value': {'amount': 100}}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['status'], 'error')
+        self.assertEqual(response.json['errors'], [
+            {u'description': u"Can't update auction in current (draft) status", u'location': u'body', u'name': u'data'}
+        ])
+
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'status': 'active.enquiries'}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        auction = response.json['data']
+        self.assertEqual(auction['status'], 'active.enquiries')
+
+        response = self.app.get('/auctions/{}'.format(auction['id']))
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        auction = response.json['data']
+        self.assertEqual(auction['status'], 'active.enquiries')
 
     def test_create_auction(self):
         response = self.app.get('/auctions')
@@ -507,7 +612,7 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.content_type, 'application/json')
         auction = response.json['data']
         self.assertEqual(set(auction) - set(test_auction_data), set(
-            [u'id', u'dateModified', u'auctionID', u'status', u'procurementMethod', u'awardCriteria', u'submissionMethod']))
+            [u'id', u'dateModified', u'auctionID', u'status', u'procurementMethod', u'awardCriteria', u'submissionMethod', u'next_check', u'owner']))
         self.assertIn(auction['id'], response.headers['Location'])
 
         response = self.app.get('/auctions/{}'.format(auction['id']))
@@ -531,15 +636,15 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.content_type, 'application/json')
         self.assertIn('{\n    "', response.body)
 
-        data = test_auction_data.copy()
-        data['items'][0]['additionalClassifications'] = [{
-            "scheme": u"ДКПП",
-            "id": u"68.10.11",
-            "description": u"Продаж або купівля житлових будинків і прилеглої землі"
-        }]
-        response = self.app.post_json('/auctions', {'data': data})
+        auction_data = deepcopy(test_auction_data)
+        auction_data['guarantee'] = {"amount": 100500, "currency": "USD"}
+        response = self.app.post_json('/auctions', {'data': auction_data})
         self.assertEqual(response.status, '201 Created')
         self.assertEqual(response.content_type, 'application/json')
+        data = response.json['data']
+        self.assertIn('guarantee', data)
+        self.assertEqual(data['guarantee']['amount'], 100500)
+        self.assertEqual(data['guarantee']['currency'], "USD")
 
     def test_get_auction(self):
         response = self.app.get('/auctions')
@@ -727,7 +832,7 @@ class AuctionResourceTest(BaseWebTest):
         self.assertIn('features', response.json['data'])
         self.assertNotIn('relatedItem', response.json['data']['features'][0])
 
-        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'tenderPeriod': {'startDate': None}}})
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'auctionPeriod': {'startDate': None}}})
         self.assertEqual(response.status, '200 OK')
         self.assertIn('features', response.json['data'])
 
@@ -746,17 +851,32 @@ class AuctionResourceTest(BaseWebTest):
         owner_token = response.json['access']['token']
         dateModified = auction.pop('dateModified')
 
-        response = self.app.patch_json('/auctions/{}'.format(
-            auction['id']), {'data': {'tenderPeriod': {'startDate': None}}})
+        response = self.app.patch_json('/auctions/{}?acc_token={}'.format(auction['id'], owner_token), {'data': {'status': 'cancelled'}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertNotIn('startDate', response.json['data']['tenderPeriod'])
+        self.assertNotEqual(response.json['data']['status'], 'cancelled')
+
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'status': 'cancelled'}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertNotEqual(response.json['data']['status'], 'cancelled')
+
+        response = self.app.patch_json('/auctions/{}?acc_token={}'.format(auction['id'], owner_token), {'data': {'procuringEntity': {'kind': 'defense'}}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertNotEqual(response.json['data']['procuringEntity']['kind'], 'defense')
 
         response = self.app.patch_json('/auctions/{}'.format(
-            auction['id']), {'data': {'tenderPeriod': {'startDate': auction['enquiryPeriod']['endDate']}}})
+            auction['id']), {'data': {'auctionPeriod': {'startDate': None}}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertIn('startDate', response.json['data']['tenderPeriod'])
+        self.assertNotIn('startDate', response.json['data']['auctionPeriod'])
+
+        response = self.app.patch_json('/auctions/{}'.format(
+            auction['id']), {'data': {'auctionPeriod': {'startDate': auction['enquiryPeriod']['endDate']}}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertIn('startDate', response.json['data']['auctionPeriod'])
 
         response = self.app.patch_json('/auctions/{}'.format(
             auction['id']), {'data': {'procurementMethodRationale': 'Open'}})
@@ -802,26 +922,37 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(len(response.json['data']['items']), 1)
 
         response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"classification": {
-            "scheme": u"CAV",
-            "id": u"70123000-9",
-            "description": u"Нерухомість"
+            "scheme": "CPV",
+            "id": "55523100-3",
+            "description": "Послуги з харчування у школах"
         }}]}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
 
-        dkpp = {
-            "scheme": u"ДКПП",
-            "id": u"68.10.11",
-            "description": u"Продаж або купівля житлових будинків і прилеглої землі"
-        }
-
-        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"additionalClassifications": [dkpp]}]}})
+        import random
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"additionalClassifications": [
+            {
+                "scheme": "ДКПП",
+                "id": "{}".format(i),
+                "description": "description #{}".format(i)
+            }
+            for i in random.sample(range(30), 25)
+        ]}]}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
 
         response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"additionalClassifications": [
-            dkpp for i in range(3)
+            {
+                "scheme": "ДКПП",
+                "id": "{}".format(i),
+                "description": "description #{}".format(i)
+            }
+            for i in random.sample(range(30), 20)
         ]}]}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'items': [{"additionalClassifications": auction['items'][0]["additionalClassifications"]}]}})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
 
@@ -832,6 +963,21 @@ class AuctionResourceTest(BaseWebTest):
         new_auction = response.json['data']
         self.assertIn('startDate', new_auction['enquiryPeriod'])
 
+        response = self.app.patch_json('/auctions/{}?acc_token={}'.format(auction['id'], owner_token), {"data": {"guarantee": {"amount": 12, "valueAddedTaxIncluded": True}}}, status=422)
+        self.assertEqual(response.status, '422 Unprocessable Entity')
+        self.assertEqual(response.json['errors'][0], {u'description': {u'valueAddedTaxIncluded': u'Rogue field'}, u'location': u'body', u'name': u'guarantee'})
+
+        response = self.app.patch_json('/auctions/{}?acc_token={}'.format(auction['id'], owner_token), {"data": {"guarantee": {"amount": 12}}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertIn('guarantee', response.json['data'])
+        self.assertEqual(response.json['data']['guarantee']['amount'], 12)
+        self.assertEqual(response.json['data']['guarantee']['currency'], 'UAH')
+
+        response = self.app.patch_json('/auctions/{}?acc_token={}'.format(auction['id'], owner_token), {"data": {"guarantee": {"currency": "USD"}}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.json['data']['guarantee']['currency'], 'USD')
+
+
         #response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'status': 'active.auction'}})
         #self.assertEqual(response.status, '200 OK')
 
@@ -840,14 +986,9 @@ class AuctionResourceTest(BaseWebTest):
         #self.assertEqual(response.content_type, 'application/json')
         #self.assertIn('auctionUrl', response.json['data'])
 
-        response = self.app.patch_json('/auctions/{}?acc_token={}'.format(auction['id'], owner_token), {'data': {'status': 'active.auction'}}, status=403)
-        self.assertEqual(response.status, '403 Forbidden')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['errors'][0]["description"], "Can't update auction status")
-
-        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'status': 'complete'}})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
+        auction_data = self.db.get(auction['id'])
+        auction_data['status'] = 'complete'
+        self.db.save(auction_data)
 
         response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'status': 'active.auction'}}, status=403)
         self.assertEqual(response.status, '403 Forbidden')
@@ -905,12 +1046,47 @@ class AuctionResourceTest(BaseWebTest):
             {u'description': u'Not Found', u'location': u'url', u'name': u'auction_id'}
         ])
 
+
+    def test_guarantee(self):
+        response = self.app.post_json('/auctions', {'data': test_auction_data})
+        self.assertEqual(response.status, '201 Created')
+        self.assertNotIn('guarantee', response.json['data'])
+        auction = response.json['data']
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']),
+                                       {'data': {'guarantee': {"amount": 55}}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertIn('guarantee', response.json['data'])
+        self.assertEqual(response.json['data']['guarantee']['amount'], 55)
+        self.assertEqual(response.json['data']['guarantee']['currency'], 'UAH')
+
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']),
+                                       {'data': {'guarantee': {"amount": 100500, "currency": "USD"}}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertIn('guarantee', response.json['data'])
+        self.assertEqual(response.json['data']['guarantee']['amount'], 100500)
+        self.assertEqual(response.json['data']['guarantee']['currency'], 'USD')
+
+        response = self.app.patch_json('/auctions/{}'.format(auction['id']), {'data': {'guarantee': None}})
+        self.assertEqual(response.status, '200 OK')
+        self.assertIn('guarantee', response.json['data'])
+        self.assertEqual(response.json['data']['guarantee']['amount'], 100500)
+        self.assertEqual(response.json['data']['guarantee']['currency'], 'USD')
+
+        data = deepcopy(test_auction_data)
+        data['guarantee'] = {"amount": 100, "currency": "USD"}
+        response = self.app.post_json('/auctions', {'data': data})
+        self.assertEqual(response.status, '201 Created')
+        self.assertIn('guarantee', response.json['data'])
+        self.assertEqual(response.json['data']['guarantee']['amount'], 100)
+        self.assertEqual(response.json['data']['guarantee']['currency'], 'USD')
+
+
     def test_auction_Administrator_change(self):
         response = self.app.post_json('/auctions', {'data': test_auction_data})
         self.assertEqual(response.status, '201 Created')
         auction = response.json['data']
 
-        response = self.app.post_json('/auctions/{}/questions'.format(auction['id']), {'data': {'title': 'question title', 'description': 'question description', 'author': test_auction_data["procuringEntity"]}})
+        response = self.app.post_json('/auctions/{}/questions'.format(auction['id']), {'data': {'title': 'question title', 'description': 'question description', 'author': test_organization}})
         self.assertEqual(response.status, '201 Created')
         self.assertEqual(response.content_type, 'application/json')
         question = response.json['data']
@@ -959,21 +1135,29 @@ class AuctionProcessTest(BaseAuctionWebTest):
                                       {"data": test_auction_data})
         auction_id = self.auction_id = response.json['data']['id']
         owner_token = response.json['access']['token']
-        # create compaint
-        self.app.authorization = ('Basic', ('token', ''))
-        response = self.app.post_json('/auctions/{}/complaints'.format(auction_id),
-                                      {'data': {'title': 'invalid conditions', 'description': 'description', 'author': test_auction_data["procuringEntity"]}})
-        complaint_id = response.json['data']['id']
-        # create second compaint
-        response = self.app.post_json('/auctions/{}/complaints'.format(auction_id),
-                                      {'data': {'title': 'invalid conditions', 'description': 'description', 'author': test_auction_data["procuringEntity"]}})
         # switch to active.tendering
         self.set_status('active.tendering')
-        # satisfying auction conditions complaint
-        # XXX correct auth
-        self.app.authorization = ('Basic', ('broker', ''))
-        response = self.app.patch_json('/auctions/{}/complaints/{}?acc_token={}'.format(auction_id, complaint_id, owner_token),
-                                       {"data": {"status": "resolved", "resolution": "resolution text"}})
+        # create compaint
+        response = self.app.post_json('/auctions/{}/complaints'.format(auction_id),
+                                      {'data': {'title': 'invalid conditions', 'description': 'description', 'author': test_organization, 'status': 'claim'}})
+        complaint_id = response.json['data']['id']
+        complaint_owner_token = response.json['access']['token']
+        # answering claim
+        self.app.patch_json('/auctions/{}/complaints/{}?acc_token={}'.format(auction_id, complaint_id, owner_token), {"data": {
+            "status": "answered",
+            "resolutionType": "resolved",
+            "resolution": "I will cancel the auction"
+        }})
+        # satisfying resolution
+        self.app.patch_json('/auctions/{}/complaints/{}?acc_token={}'.format(auction_id, complaint_id, complaint_owner_token), {"data": {
+            "satisfied": True,
+            "status": "resolved"
+        }})
+        # cancellation
+        self.app.post_json('/auctions/{}/cancellations?acc_token={}'.format(auction_id, owner_token), {'data': {
+            'reason': 'invalid conditions',
+            'status': 'active'
+        }})
         # check status
         response = self.app.get('/auctions/{}'.format(auction_id))
         self.assertEqual(response.json['data']['status'], 'cancelled')
@@ -994,18 +1178,22 @@ class AuctionProcessTest(BaseAuctionWebTest):
         # create bid
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.post_json('/auctions/{}/bids'.format(auction_id),
-                                      {'data': {'tenderers': [test_auction_data["procuringEntity"]], "value": {"amount": 500}}})
+                                      {'data': {'tenderers': [test_organization], "value": {"amount": 500}}})
         # switch to active.qualification
-        #response = self.set_status('active.qualification', {"auctionPeriod": {"startDate": None}})
-        response = self.set_status('active.auction', {"auctionPeriod": {"startDate": None}})
-        self.assertNotIn("auctionPeriod", response.json['data'])
+        self.set_status('active.auction', {'status': 'active.tendering'})
+        self.app.authorization = ('Basic', ('chronograph', ''))
+        response = self.app.patch_json('/auctions/{}'.format(auction_id), {"data": {"id": auction_id}})
+        self.assertNotIn('auctionPeriod', response.json['data'])
         # get awards
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.get('/auctions/{}/awards?acc_token={}'.format(auction_id, owner_token))
         # get pending award
         award_id = [i['id'] for i in response.json['data'] if i['status'] == 'pending'][0]
+        award_date = [i['date'] for i in response.json['data'] if i['status'] == 'pending'][0]
         # set award as active
-        self.app.patch_json('/auctions/{}/awards/{}?acc_token={}'.format(auction_id, award_id, owner_token), {"data": {"status": "active"}})
+        response = self.app.patch_json('/auctions/{}/awards/{}?acc_token={}'.format(auction_id, award_id, owner_token), {"data": {"status": "active"}})
+        self.assertNotEqual(response.json['data']['date'], award_date)
+
         # get contract id
         response = self.app.get('/auctions/{}'.format(auction_id))
         contract_id = response.json['data']['contracts'][-1]['id']
@@ -1040,10 +1228,11 @@ class AuctionProcessTest(BaseAuctionWebTest):
         # create bid
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.post_json('/auctions/{}/bids'.format(auction_id),
-                                      {'data': {'tenderers': [test_auction_data["procuringEntity"]], "value": {"amount": 500}}})
+                                      {'data': {'tenderers': [test_organization], "value": {"amount": 500}}})
         # switch to active.qualification
-        #self.set_status('active.qualification')
-        self.set_status('active.auction')
+        self.set_status('active.auction', {"auctionPeriod": {"startDate": None}, 'status': 'active.tendering'})
+        self.app.authorization = ('Basic', ('chronograph', ''))
+        response = self.app.patch_json('/auctions/{}'.format(auction_id), {"data": {"id": auction_id}})
         # get awards
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.get('/auctions/{}/awards?acc_token={}'.format(auction_id, owner_token))
@@ -1052,10 +1241,14 @@ class AuctionProcessTest(BaseAuctionWebTest):
         # set award as unsuccessful
         response = self.app.patch_json('/auctions/{}/awards/{}?acc_token={}'.format(auction_id, award_id, owner_token),
                                        {"data": {"status": "unsuccessful"}})
+        # time travel
+        auction = self.db.get(auction_id)
+        for i in auction.get('awards', []):
+            i['complaintPeriod']['endDate'] = i['complaintPeriod']['startDate']
+        self.db.save(auction)
         # set auction status after stand slill period
         self.app.authorization = ('Basic', ('chronograph', ''))
-        response = self.app.patch_json('/auctions/{}'.format(auction_id),
-                                       {'data': {'status': 'unsuccessful'}})
+        response = self.app.patch_json('/auctions/{}'.format(auction_id), {"data": {"id": auction_id}})
         # check status
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.get('/auctions/{}'.format(auction_id))
@@ -1072,17 +1265,19 @@ class AuctionProcessTest(BaseAuctionWebTest):
         auction_id = self.auction_id = response.json['data']['id']
         owner_token = response.json['access']['token']
         # switch to active.tendering
+        response = self.app.get('/auctions')
+        response = self.app.get('/auctions/{}'.format(auction_id))
         self.set_status('active.tendering')
         # create bid
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.post_json('/auctions/{}/bids'.format(auction_id),
-                                      {'data': {'tenderers': [test_auction_data["procuringEntity"]], "value": {"amount": 450}}})
+                                      {'data': {'tenderers': [test_organization], "value": {"amount": 450}}})
         bid_id = response.json['data']['id']
         bid_token = response.json['access']['token']
         # create second bid
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.post_json('/auctions/{}/bids'.format(auction_id),
-                                      {'data': {'tenderers': [test_auction_data["procuringEntity"]], "value": {"amount": 475}}})
+                                      {'data': {'tenderers': [test_organization], "value": {"amount": 475}}})
         # switch to active.auction
         self.set_status('active.auction')
 
@@ -1128,16 +1323,25 @@ class AuctionProcessTest(BaseAuctionWebTest):
         award2_id = [i['id'] for i in response.json['data'] if i['status'] == 'pending'][0]
         self.assertNotEqual(award_id, award2_id)
         # create first award complaint
-        self.app.authorization = ('Basic', ('token', ''))
+        self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.post_json('/auctions/{}/awards/{}/complaints?acc_token={}'.format(auction_id, award_id, bid_token),
-                                      {'data': {'title': 'complaint title', 'description': 'complaint description', 'author': test_auction_data["procuringEntity"]}})
+                                      {'data': {'title': 'complaint title', 'description': 'complaint description', 'author': test_organization, 'status': 'claim'}})
         complaint_id = response.json['data']['id']
+        complaint_owner_token = response.json['access']['token']
         # create first award complaint #2
         response = self.app.post_json('/auctions/{}/awards/{}/complaints?acc_token={}'.format(auction_id, award_id, bid_token),
-                                      {'data': {'title': 'complaint title', 'description': 'complaint description', 'author': test_auction_data["procuringEntity"]}})
-        # satisfying award complaint
-        response = self.app.patch_json('/auctions/{}/awards/{}/complaints/{}?acc_token={}'.format(auction_id, award_id, complaint_id, owner_token),
-                                       {"data": {"status": "resolved", "resolution": "resolution text"}})
+                                      {'data': {'title': 'complaint title', 'description': 'complaint description', 'author': test_organization}})
+        # answering claim
+        self.app.patch_json('/auctions/{}/awards/{}/complaints/{}?acc_token={}'.format(auction_id, award_id, complaint_id, owner_token), {"data": {
+            "status": "answered",
+            "resolutionType": "resolved",
+            "resolution": "resolution text " * 2
+        }})
+        # satisfying resolution
+        self.app.patch_json('/auctions/{}/awards/{}/complaints/{}?acc_token={}'.format(auction_id, award_id, complaint_id, complaint_owner_token), {"data": {
+            "satisfied": True,
+            "status": "resolved"
+        }})
         # get awards
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.get('/auctions/{}/awards?acc_token={}'.format(auction_id, owner_token))
@@ -1148,6 +1352,12 @@ class AuctionProcessTest(BaseAuctionWebTest):
         # get contract id
         response = self.app.get('/auctions/{}'.format(auction_id))
         contract_id = response.json['data']['contracts'][-1]['id']
+        # create auction contract document for test
+        response = self.app.post('/auctions/{}/contracts/{}/documents?acc_token={}'.format(auction_id, contract_id, owner_token), upload_files=[('file', 'name.doc', 'content')], status=201)
+        self.assertEqual(response.status, '201 Created')
+        self.assertEqual(response.content_type, 'application/json')
+        doc_id = response.json["data"]['id']
+        self.assertIn(doc_id, response.headers['Location'])
         # after stand slill period
         self.app.authorization = ('Basic', ('chronograph', ''))
         self.set_status('complete', {'status': 'active.awarded'})
@@ -1163,6 +1373,21 @@ class AuctionProcessTest(BaseAuctionWebTest):
         self.app.authorization = ('Basic', ('broker', ''))
         response = self.app.get('/auctions/{}'.format(auction_id))
         self.assertEqual(response.json['data']['status'], 'complete')
+
+        response = self.app.post('/auctions/{}/contracts/{}/documents?acc_token={}'.format(auction_id, contract_id, owner_token), upload_files=[('file', 'name.doc', 'content')], status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't add document in current (complete) auction status")
+
+        response = self.app.patch_json('/auctions/{}/contracts/{}/documents/{}?acc_token={}'.format(auction_id, contract_id, doc_id, owner_token), {"data": {"description": "document description"}}, status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update document in current (complete) auction status")
+
+        response = self.app.put('/auctions/{}/contracts/{}/documents/{}?acc_token={}'.format(auction_id, contract_id, doc_id, owner_token), upload_files=[('file', 'name.doc', 'content3')], status=403)
+        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update document in current (complete) auction status")
 
 
 def suite():
