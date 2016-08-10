@@ -5,7 +5,7 @@ from datetime import timedelta
 
 from openprocurement.api.utils import ROUTE_PREFIX
 from openprocurement.api.models import get_now
-from openprocurement.auctions.flash.models import Auction, get_now
+from openprocurement.auctions.flash.models import Auction
 from openprocurement.auctions.flash.tests.base import test_auction_data, test_organization, BaseWebTest, BaseAuctionWebTest
 
 
