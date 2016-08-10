@@ -1,14 +1,15 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
+from openprocurement.api.models import get_now
 from openprocurement.api.utils import (
     json_view,
     context_unpack,
+    APIResource,
 )
-from openprocurement.api.models import get_now
 from openprocurement.auctions.flash.utils import (
     apply_patch,
     save_auction,
     opresource,
+
 )
 from openprocurement.auctions.flash.validation import (
     validate_question_data,
@@ -16,18 +17,11 @@ from openprocurement.auctions.flash.validation import (
 )
 
 
-LOGGER = getLogger(__name__)
-
-
 @opresource(name='Auction Questions',
             collection_path='/auctions/{auction_id}/questions',
             path='/auctions/{auction_id}/questions/{question_id}',
             description="Auction questions")
-class AuctionQuestionResource(object):
-
-    def __init__(self, request, context):
-        self.request = request
-        self.db = request.registry.db
+class AuctionQuestionResource(APIResource):
 
     @json_view(content_type="application/json", validators=(validate_question_data,), permission='create_question')
     def collection_post(self):
@@ -45,7 +39,7 @@ class AuctionQuestionResource(object):
             return
         auction.questions.append(question)
         if save_auction(self.request):
-            LOGGER.info('Created auction question {}'.format(question.id),
+            self.LOGGER.info('Created auction question {}'.format(question.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_question_create'}, {'question_id': question.id}))
             self.request.response.status = 201
             self.request.response.headers['Location'] = self.request.route_url('Auction Questions', auction_id=auction.id, question_id=question.id)
@@ -77,6 +71,6 @@ class AuctionQuestionResource(object):
             self.request.errors.status = 403
             return
         if apply_patch(self.request, src=self.request.context.serialize()):
-            LOGGER.info('Updated auction question {}'.format(self.request.context.id),
+            self.LOGGER.info('Updated auction question {}'.format(self.request.context.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_question_patch'}))
             return {'data': self.request.context.serialize(auction.status)}

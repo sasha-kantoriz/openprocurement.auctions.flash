@@ -2,23 +2,50 @@
 from couchdb.design import ViewDefinition
 from openprocurement.api import design
 
-
 FIELDS = [
     'auctionPeriod',
     'status',
     'auctionID',
     'lots',
     'procurementMethodType',
+    'next_check',
+    #'auctionUrl',
+    #'awardPeriod',
+    #'dateModified',
+    #'description',
+    #'description_en',
+    #'description_ru',
+    #'enquiryPeriod',
+    #'minimalStep',
+    #'mode',
+    #'procuringEntity',
+    #'auctionPeriod',
+    #'title',
+    #'title_en',
+    #'title_ru',
+    #'value',
 ]
 CHANGES_FIELDS = FIELDS + [
     'dateModified',
 ]
 
 
+
 def add_design():
     for i, j in globals().items():
         if "_view" in i:
             setattr(design, i, j)
+
+
+
+
+def add_index_options(doc):
+    doc['options'] = {'local_seq': True}
+
+
+def sync_design(db):
+    views = [j for i, j in globals().items() if "_view" in i]
+    ViewDefinition.sync_many(db, views, callback=add_index_options)
 
 
 auctions_all_view = ViewDefinition('auctions', 'all', '''function(doc) {
@@ -29,7 +56,7 @@ auctions_all_view = ViewDefinition('auctions', 'all', '''function(doc) {
 
 
 auctions_by_dateModified_view = ViewDefinition('auctions', 'by_dateModified', '''function(doc) {
-    if(doc.doc_type == 'Auction') {
+    if(doc.doc_type == 'Auction' && doc.status != 'draft') {
         var fields=%s, data={};
         for (var i in fields) {
             if (doc[fields[i]]) {
@@ -41,7 +68,7 @@ auctions_by_dateModified_view = ViewDefinition('auctions', 'by_dateModified', ''
 }''' % FIELDS)
 
 auctions_real_by_dateModified_view = ViewDefinition('auctions', 'real_by_dateModified', '''function(doc) {
-    if(doc.doc_type == 'Auction' && !doc.mode) {
+    if(doc.doc_type == 'Auction' && doc.status != 'draft' && !doc.mode) {
         var fields=%s, data={};
         for (var i in fields) {
             if (doc[fields[i]]) {
@@ -53,7 +80,7 @@ auctions_real_by_dateModified_view = ViewDefinition('auctions', 'real_by_dateMod
 }''' % FIELDS)
 
 auctions_test_by_dateModified_view = ViewDefinition('auctions', 'test_by_dateModified', '''function(doc) {
-    if(doc.doc_type == 'Auction' && doc.mode == 'test') {
+    if(doc.doc_type == 'Auction' && doc.status != 'draft' && doc.mode == 'test') {
         var fields=%s, data={};
         for (var i in fields) {
             if (doc[fields[i]]) {
@@ -65,7 +92,7 @@ auctions_test_by_dateModified_view = ViewDefinition('auctions', 'test_by_dateMod
 }''' % FIELDS)
 
 auctions_by_local_seq_view = ViewDefinition('auctions', 'by_local_seq', '''function(doc) {
-    if(doc.doc_type == 'Auction') {
+    if(doc.doc_type == 'Auction' && doc.status != 'draft') {
         var fields=%s, data={};
         for (var i in fields) {
             if (doc[fields[i]]) {
@@ -77,7 +104,7 @@ auctions_by_local_seq_view = ViewDefinition('auctions', 'by_local_seq', '''funct
 }''' % CHANGES_FIELDS)
 
 auctions_real_by_local_seq_view = ViewDefinition('auctions', 'real_by_local_seq', '''function(doc) {
-    if(doc.doc_type == 'Auction' && !doc.mode) {
+    if(doc.doc_type == 'Auction' && doc.status != 'draft' && !doc.mode) {
         var fields=%s, data={};
         for (var i in fields) {
             if (doc[fields[i]]) {
@@ -89,7 +116,7 @@ auctions_real_by_local_seq_view = ViewDefinition('auctions', 'real_by_local_seq'
 }''' % CHANGES_FIELDS)
 
 auctions_test_by_local_seq_view = ViewDefinition('auctions', 'test_by_local_seq', '''function(doc) {
-    if(doc.doc_type == 'Auction' && doc.mode == 'test') {
+    if(doc.doc_type == 'Auction' && doc.status != 'draft' && doc.mode == 'test') {
         var fields=%s, data={};
         for (var i in fields) {
             if (doc[fields[i]]) {

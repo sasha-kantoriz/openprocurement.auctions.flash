@@ -1,14 +1,16 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
 from openprocurement.api.utils import (
     json_view,
     context_unpack,
+    APIResource,
+    get_now
 )
 from openprocurement.auctions.flash.utils import (
     apply_patch,
     save_auction,
-    check_auction_status,
+    add_next_award,
     opresource,
+
 )
 from openprocurement.auctions.flash.validation import (
     validate_cancellation_data,
@@ -16,18 +18,37 @@ from openprocurement.auctions.flash.validation import (
 )
 
 
-LOGGER = getLogger(__name__)
-
-
 @opresource(name='Auction Cancellations',
             collection_path='/auctions/{auction_id}/cancellations',
             path='/auctions/{auction_id}/cancellations/{cancellation_id}',
             description="Auction cancellations")
-class AuctionCancellationResource(object):
+class AuctionCancellationResource(APIResource):
 
-    def __init__(self, request, context):
-        self.request = request
-        self.db = request.registry.db
+    def cancel_auction(self):
+        auction = self.request.validated['auction']
+        if auction.status in ['active.tendering', 'active.auction']:
+            auction.bids = []
+        auction.status = 'cancelled'
+
+    def cancel_lot(self, cancellation=None):
+
+        if not cancellation:
+            cancellation = self.context
+        auction = self.request.validated['auction']
+        [setattr(i, 'status', 'cancelled') for i in auction.lots if i.id == cancellation.relatedLot]
+        statuses = set([lot.status for lot in auction.lots])
+        if statuses == set(['cancelled']):
+            self.cancel_auction()
+        elif not statuses.difference(set(['unsuccessful', 'cancelled'])):
+            auction.status = 'unsuccessful'
+        elif not statuses.difference(set(['complete', 'unsuccessful', 'cancelled'])):
+            auction.status = 'complete'
+        if auction.status == 'active.auction' and all([
+            i.auctionPeriod and i.auctionPeriod.endDate
+            for i in self.request.validated['auction'].lots
+            if i.numberOfBids > 1 and i.status == 'active'
+        ]):
+            add_next_award(self.request)
 
     @json_view(content_type="application/json", validators=(validate_cancellation_data,), permission='edit_auction')
     def collection_post(self):
@@ -39,18 +60,18 @@ class AuctionCancellationResource(object):
             self.request.errors.status = 403
             return
         cancellation = self.request.validated['cancellation']
+        cancellation.date = get_now()
         if any([i.status != 'active' for i in auction.lots if i.id == cancellation.relatedLot]):
             self.request.errors.add('body', 'data', 'Can add cancellation only in active lot status')
             self.request.errors.status = 403
             return
         if cancellation.relatedLot and cancellation.status == 'active':
-            [setattr(i, 'status', 'cancelled') for i in auction.lots if i.id == cancellation.relatedLot]
-            check_auction_status(self.request)
+            self.cancel_lot(cancellation)
         elif cancellation.status == 'active':
-            auction.status = 'cancelled'
+            self.cancel_auction()
         auction.cancellations.append(cancellation)
         if save_auction(self.request):
-            LOGGER.info('Created auction cancellation {}'.format(cancellation.id),
+            self.LOGGER.info('Created auction cancellation {}'.format(cancellation.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_cancellation_create'}, {'cancellation_id': cancellation.id}))
             self.request.response.status = 201
             self.request.response.headers['Location'] = self.request.route_url('Auction Cancellations', auction_id=auction.id, cancellation_id=cancellation.id)
@@ -83,11 +104,10 @@ class AuctionCancellationResource(object):
             return
         apply_patch(self.request, save=False, src=self.request.context.serialize())
         if self.request.context.relatedLot and self.request.context.status == 'active':
-            [setattr(i, 'status', 'cancelled') for i in auction.lots if i.id == self.request.context.relatedLot]
-            check_auction_status(self.request)
+            self.cancel_lot()
         elif self.request.context.status == 'active':
-            auction.status = 'cancelled'
+            self.cancel_auction()
         if save_auction(self.request):
-            LOGGER.info('Updated auction cancellation {}'.format(self.request.context.id),
+            self.LOGGER.info('Updated auction cancellation {}'.format(self.request.context.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_cancellation_patch'}))
             return {'data': self.request.context.serialize("view")}

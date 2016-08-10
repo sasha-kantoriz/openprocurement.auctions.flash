@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
 import unittest
 
-from openprocurement.auctions.flash.tests.base import BaseAuctionWebTest, test_lots
+from openprocurement.auctions.flash.tests.base import BaseAuctionWebTest, test_lots, test_bids
 
 
 class AuctionCancellationResourceTest(BaseAuctionWebTest):
+    initial_status = 'active.tendering'
+    initial_bids = test_bids
 
     def test_create_auction_cancellation_invalid(self):
         response = self.app.post_json('/auctions/some_id/cancellations', {
@@ -110,7 +112,7 @@ class AuctionCancellationResourceTest(BaseAuctionWebTest):
         response = self.app.get('/auctions/{}'.format(self.auction_id))
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['data']["status"], 'active.enquiries')
+        self.assertEqual(response.json['data']["status"], 'active.tendering')
 
         response = self.app.post_json('/auctions/{}/cancellations'.format(
             self.auction_id), {'data': {'reason': 'cancellation reason', 'status': 'active'}})
@@ -126,6 +128,7 @@ class AuctionCancellationResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data']["status"], 'cancelled')
+        self.assertNotIn("bids", response.json['data'])
 
         response = self.app.post_json('/auctions/{}/cancellations'.format(
             self.auction_id), {'data': {'reason': 'cancellation reason'}}, status=403)
@@ -149,6 +152,7 @@ class AuctionCancellationResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data']["status"], 'cancelled')
+        self.assertNotIn("bids", response.json['data'])
 
         response = self.app.patch_json('/auctions/{}/cancellations/{}'.format(self.auction_id, cancellation['id']), {"data": {"status": "pending"}}, status=403)
         self.assertEqual(response.status, '403 Forbidden')
@@ -232,7 +236,9 @@ class AuctionCancellationResourceTest(BaseAuctionWebTest):
 
 
 class AuctionLotCancellationResourceTest(BaseAuctionWebTest):
+    initial_status = 'active.tendering'
     initial_lots = test_lots
+    initial_bids = test_bids
 
     def test_create_auction_cancellation(self):
         lot_id = self.initial_lots[0]['id']
@@ -252,7 +258,7 @@ class AuctionLotCancellationResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data']['lots'][0]["status"], 'active')
-        self.assertEqual(response.json['data']["status"], 'active.enquiries')
+        self.assertEqual(response.json['data']["status"], 'active.tendering')
 
         response = self.app.post_json('/auctions/{}/cancellations'.format(self.auction_id), {'data': {
             'reason': 'cancellation reason',
@@ -315,7 +321,9 @@ class AuctionLotCancellationResourceTest(BaseAuctionWebTest):
 
 
 class AuctionLotsCancellationResourceTest(BaseAuctionWebTest):
+    initial_status = 'active.tendering'
     initial_lots = 2 * test_lots
+    initial_bids = test_bids
 
     def test_create_auction_cancellation(self):
         lot_id = self.initial_lots[0]['id']
@@ -335,7 +343,7 @@ class AuctionLotsCancellationResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data']['lots'][0]["status"], 'active')
-        self.assertEqual(response.json['data']["status"], 'active.enquiries')
+        self.assertEqual(response.json['data']["status"], 'active.tendering')
 
         response = self.app.post_json('/auctions/{}/cancellations'.format(self.auction_id), {'data': {
             'reason': 'cancellation reason',

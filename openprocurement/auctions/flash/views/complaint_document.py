@@ -1,9 +1,8 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
 from openprocurement.api.utils import (
     json_view,
     context_unpack,
-    APIResource
+    APIResource,
 )
 from openprocurement.auctions.flash.utils import (
     get_file,
@@ -12,21 +11,23 @@ from openprocurement.auctions.flash.utils import (
     apply_patch,
     update_file_content_type,
     opresource,
+
 )
-from openprocurement.auctions.flash.validation import (
+from openprocurement.api.validation import (
     validate_file_update,
     validate_file_upload,
-    validate_patch_document_data,
+)
+from openprocurement.auctions.flash.validation import (
+    validate_patch_document_data,#
 )
 
 
-LOGGER = getLogger(__name__)
 
 
 STATUS4ROLE = {
     'complaint_owner': ['draft', 'answered'],
     'reviewers': ['pending'],
-    'tender_owner': ['claim'],
+    'auction_owner': ['claim'],
 }
 
 
@@ -36,20 +37,15 @@ STATUS4ROLE = {
             description="Auction complaint documents")
 class AuctionComplaintDocumentResource(APIResource):
 
-    # def __init__(self, request, context):
-    #     self.request = request
-    #     self.db = request.registry.db
-
     @json_view(permission='view_auction')
     def collection_get(self):
         """Auction Complaint Documents List"""
-        complaint = self.request.validated['complaint']
         if self.request.params.get('all', ''):
-            collection_data = [i.serialize("view") for i in complaint['documents']]
+            collection_data = [i.serialize("view") for i in self.context.documents]
         else:
             collection_data = sorted(dict([
                 (i.id, i.serialize("view"))
-                for i in complaint['documents']
+                for i in self.context.documents
             ]).values(), key=lambda i: i['dateModified'])
         return {'data': collection_data}
 
@@ -66,9 +62,10 @@ class AuctionComplaintDocumentResource(APIResource):
             self.request.errors.status = 403
             return
         document = upload_file(self.request)
-        self.request.validated['complaint'].documents.append(document)
+        document.author = self.request.authenticated_role
+        self.context.documents.append(document)
         if save_auction(self.request):
-            LOGGER.info('Created auction complaint document {}'.format(document.id),
+            self.LOGGER.info('Created auction complaint document {}'.format(document.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_complaint_document_create'}, {'document_id': document.id}))
             self.request.response.status = 201
             document_route = self.request.matched_route.name.replace("collection_", "")
@@ -92,14 +89,23 @@ class AuctionComplaintDocumentResource(APIResource):
     @json_view(validators=(validate_file_update,), permission='edit_complaint')
     def put(self):
         """Auction Complaint Document Update"""
+        if self.request.authenticated_role != self.context.author:
+            self.request.errors.add('url', 'role', 'Can update document only author')
+            self.request.errors.status = 403
+            return
         if self.request.validated['auction_status'] not in ['active.enquiries', 'active.tendering', 'active.auction', 'active.qualification', 'active.awarded']:
             self.request.errors.add('body', 'data', 'Can\'t update document in current ({}) auction status'.format(self.request.validated['auction_status']))
             self.request.errors.status = 403
             return
+        if self.request.validated['complaint'].status not in STATUS4ROLE.get(self.request.authenticated_role, []):
+            self.request.errors.add('body', 'data', 'Can\'t update document in current ({}) complaint status'.format(self.request.validated['complaint'].status))
+            self.request.errors.status = 403
+            return
         document = upload_file(self.request)
+        document.author = self.request.authenticated_role
         self.request.validated['complaint'].documents.append(document)
         if save_auction(self.request):
-            LOGGER.info('Updated auction complaint document {}'.format(self.request.context.id),
+            self.LOGGER.info('Updated auction complaint document {}'.format(self.request.context.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_complaint_document_put'}))
             return {'data': document.serialize("view")}
 
@@ -107,7 +113,7 @@ class AuctionComplaintDocumentResource(APIResource):
     def patch(self):
         """Auction Complaint Document Update"""
         if self.request.authenticated_role != self.context.author:
-            self.request.errors.add('url', 'role', 'Can update document only author {} {}'.format(self.request.authenticated_role, self.context.author))
+            self.request.errors.add('url', 'role', 'Can update document only author')
             self.request.errors.status = 403
             return
         if self.request.validated['auction_status'] not in ['active.enquiries', 'active.tendering', 'active.auction', 'active.qualification', 'active.awarded']:
@@ -120,6 +126,6 @@ class AuctionComplaintDocumentResource(APIResource):
             return
         if apply_patch(self.request, src=self.request.context.serialize()):
             update_file_content_type(self.request)
-            LOGGER.info('Updated auction complaint document {}'.format(self.request.context.id),
+            self.LOGGER.info('Updated auction complaint document {}'.format(self.request.context.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_complaint_document_patch'}))
             return {'data': self.request.context.serialize("view")}

@@ -1,47 +1,42 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
 from openprocurement.api.utils import (
     json_view,
     context_unpack,
+    APIResource,
 )
 from openprocurement.auctions.flash.utils import (
     get_file,
     save_auction,
     upload_file,
     apply_patch,
-    update_file_content_type,
+    update_file_content_type, 
     opresource,
 )
 from openprocurement.auctions.flash.validation import (
-    validate_file_update,
-    validate_file_upload,
     validate_patch_document_data,
 )
+from openprocurement.api.validation import (
+    validate_file_update,
+    validate_file_upload,
 
-
-LOGGER = getLogger(__name__)
+)
 
 
 @opresource(name='Auction Award Documents',
             collection_path='/auctions/{auction_id}/awards/{award_id}/documents',
             path='/auctions/{auction_id}/awards/{award_id}/documents/{document_id}',
             description="Auction award documents")
-class AuctionAwardDocumentResource(object):
-
-    def __init__(self, request, context):
-        self.request = request
-        self.db = request.registry.db
+class AuctionAwardDocumentResource(APIResource):
 
     @json_view(permission='view_auction')
     def collection_get(self):
         """Auction Award Documents List"""
-        award = self.request.validated['award']
         if self.request.params.get('all', ''):
-            collection_data = [i.serialize("view") for i in award['documents']]
+            collection_data = [i.serialize("view") for i in self.context.documents]
         else:
             collection_data = sorted(dict([
                 (i.id, i.serialize("view"))
-                for i in award['documents']
+                for i in self.context.documents
             ]).values(), key=lambda i: i['dateModified'])
         return {'data': collection_data}
 
@@ -58,9 +53,9 @@ class AuctionAwardDocumentResource(object):
             self.request.errors.status = 403
             return
         document = upload_file(self.request)
-        self.request.validated['award'].documents.append(document)
+        self.context.documents.append(document)
         if save_auction(self.request):
-            LOGGER.info('Created auction award document {}'.format(document.id),
+            self.LOGGER.info('Created auction award document {}'.format(document.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_award_document_create'}, {'document_id': document.id}))
             self.request.response.status = 201
             document_route = self.request.matched_route.name.replace("collection_", "")
@@ -95,7 +90,7 @@ class AuctionAwardDocumentResource(object):
         document = upload_file(self.request)
         self.request.validated['award'].documents.append(document)
         if save_auction(self.request):
-            LOGGER.info('Updated auction award document {}'.format(self.request.context.id),
+            self.LOGGER.info('Updated auction award document {}'.format(self.request.context.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_award_document_put'}))
             return {'data': document.serialize("view")}
 
@@ -112,6 +107,6 @@ class AuctionAwardDocumentResource(object):
             return
         if apply_patch(self.request, src=self.request.context.serialize()):
             update_file_content_type(self.request)
-            LOGGER.info('Updated auction award document {}'.format(self.request.context.id),
+            self.LOGGER.info('Updated auction award document {}'.format(self.request.context.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_award_document_patch'}))
             return {'data': self.request.context.serialize("view")}

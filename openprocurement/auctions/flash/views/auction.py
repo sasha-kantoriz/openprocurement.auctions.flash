@@ -1,8 +1,9 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
 from openprocurement.api.utils import (
     json_view,
     context_unpack,
+    cleanup_bids_for_cancelled_lots,
+    APIResource,
 )
 from openprocurement.auctions.flash.utils import (
     save_auction,
@@ -15,18 +16,11 @@ from openprocurement.auctions.flash.validation import (
 )
 
 
-LOGGER = getLogger(__name__)
-
-
 @opresource(name='Auction Auction',
             collection_path='/auctions/{auction_id}/auction',
             path='/auctions/{auction_id}/auction/{auction_lot_id}',
             description="Auction auction data")
-class AuctionAuctionResource(object):
-
-    def __init__(self, request, context):
-        self.request = request
-        self.db = request.registry.db
+class AuctionAuctionResource(APIResource):
 
     @json_view(permission='auction')
     def collection_get(self):
@@ -91,7 +85,7 @@ class AuctionAuctionResource(object):
         """Set urls for access to auction.
         """
         if apply_patch(self.request, src=self.request.validated['auction_src']):
-            LOGGER.info('Updated auction urls', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_auction_patch'}))
+            self.LOGGER.info('Updated auction urls', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_auction_patch'}))
             return {'data': self.request.validated['auction'].serialize("auction_view")}
 
     @json_view(content_type="application/json", permission='auction', validators=(validate_auction_auction_data))
@@ -167,10 +161,10 @@ class AuctionAuctionResource(object):
 
         """
         apply_patch(self.request, save=False, src=self.request.validated['auction_src'])
-        if all([i.auctionPeriod and i.auctionPeriod.endDate for i in self.request.validated['auction'].lots if i.numberOfBids > 1]):
+        if all([i.auctionPeriod and i.auctionPeriod.endDate for i in self.request.validated['auction'].lots if i.numberOfBids > 1 and i.status == 'active']):
             add_next_award(self.request)
         if save_auction(self.request):
-            LOGGER.info('Report auction results', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_auction_post'}))
+            self.LOGGER.info('Report auction results', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_auction_post'}))
             return {'data': self.request.validated['auction'].serialize(self.request.validated['auction'].status)}
 
     @json_view(content_type="application/json", permission='auction', validators=(validate_auction_auction_data))
@@ -178,7 +172,7 @@ class AuctionAuctionResource(object):
         """Set urls for access to auction for lot.
         """
         if apply_patch(self.request, src=self.request.validated['auction_src']):
-            LOGGER.info('Updated auction urls', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_lot_auction_patch'}))
+            self.LOGGER.info('Updated auction urls', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_lot_auction_patch'}))
             return {'data': self.request.validated['auction'].serialize("auction_view")}
 
     @json_view(content_type="application/json", permission='auction', validators=(validate_auction_auction_data))
@@ -186,8 +180,9 @@ class AuctionAuctionResource(object):
         """Report auction results for lot.
         """
         apply_patch(self.request, save=False, src=self.request.validated['auction_src'])
-        if all([i.auctionPeriod and i.auctionPeriod.endDate for i in self.request.validated['auction'].lots if i.numberOfBids > 1]):
+        if all([i.auctionPeriod and i.auctionPeriod.endDate for i in self.request.validated['auction'].lots if i.numberOfBids > 1 and i.status == 'active']):
+            cleanup_bids_for_cancelled_lots(self.request.validated['auction'])
             add_next_award(self.request)
         if save_auction(self.request):
-            LOGGER.info('Report auction results', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_lot_auction_post'}))
+            self.LOGGER.info('Report auction results', extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_lot_auction_post'}))
             return {'data': self.request.validated['auction'].serialize(self.request.validated['auction'].status)}

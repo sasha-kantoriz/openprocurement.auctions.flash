@@ -1,27 +1,22 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
 from openprocurement.api.models import get_now
 from openprocurement.api.utils import (
-    json_view,
     context_unpack,
+    json_view,
     set_ownership,
-    APIResource
+    APIResource,
 )
-from openprocurement.auctions.flash.models import STAND_STILL_TIME
 from openprocurement.auctions.flash.utils import (
     apply_patch,
-    save_auction,
-    add_next_award,
     check_auction_status,
     opresource,
+    save_auction,
+
 )
 from openprocurement.auctions.flash.validation import (
     validate_complaint_data,
     validate_patch_complaint_data,
 )
-
-
-LOGGER = getLogger(__name__)
 
 
 @opresource(name='Auction Award Complaints',
@@ -50,6 +45,7 @@ class AuctionAwardComplaintResource(APIResource):
             self.request.errors.status = 403
             return
         complaint = self.request.validated['complaint']
+        complaint.date = get_now()
         complaint.relatedLot = self.context.lotID
         if complaint.status == 'claim':
             complaint.dateSubmitted = get_now()
@@ -119,13 +115,13 @@ class AuctionAwardComplaintResource(APIResource):
             apply_patch(self.request, save=False, src=self.context.serialize())
             self.context.type = 'complaint'
             self.context.dateEscalated = get_now()
-        # tender_owner
-        elif self.request.authenticated_role == 'tender_owner' and self.context.status == 'claim' and data.get('status', self.context.status) == self.context.status:
+        # auction_owner
+        elif self.request.authenticated_role == 'auction_owner' and self.context.status == 'claim' and data.get('status', self.context.status) == self.context.status:
             apply_patch(self.request, save=False, src=self.context.serialize())
-        elif self.request.authenticated_role == 'tender_owner' and self.context.status == 'claim' and data.get('resolution', self.context.resolution) and len(data.get('resolution', self.context.resolution or "")) >= 20 and data.get('resolutionType', self.context.resolutionType) and data.get('status', self.context.status) == 'answered':
+        elif self.request.authenticated_role == 'auction_owner' and self.context.status == 'claim' and data.get('resolution', self.context.resolution) and len(data.get('resolution', self.context.resolution or "")) >= 20 and data.get('resolutionType', self.context.resolutionType) and data.get('status', self.context.status) == 'answered':
             apply_patch(self.request, save=False, src=self.context.serialize())
             self.context.dateAnswered = get_now()
-        elif self.request.authenticated_role == 'tender_owner' and self.context.status == 'pending':
+        elif self.request.authenticated_role == 'auction_owner' and self.context.status == 'pending':
             apply_patch(self.request, save=False, src=self.context.serialize())
         # reviewers
         elif self.request.authenticated_role == 'reviewers' and self.context.status == 'pending' and data.get('status', self.context.status) == self.context.status:

@@ -1,17 +1,6 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
 from functools import partial
-from openprocurement.api.models import get_now
-from openprocurement.api.utils import (
-    context_unpack,
-    decrypt,
-    encrypt,
-    generate_id,
-    json_view,
-    set_ownership,
-    APIResource
-)
-from openprocurement.auctions.flash.design import (
+from openprocurement.auctions.flash.design import ( 
     FIELDS,
     auctions_by_dateModified_view,
     auctions_real_by_dateModified_view,
@@ -20,15 +9,24 @@ from openprocurement.auctions.flash.design import (
     auctions_real_by_local_seq_view,
     auctions_test_by_local_seq_view,
 )
+from openprocurement.api.models import get_now
+from openprocurement.api.utils import (
+    context_unpack,
+    decrypt,
+    encrypt,
+    generate_id,
+    json_view,
+    APIResource,
+)
 from openprocurement.auctions.flash.utils import (
-    generate_auction_id,
+    apply_patch,
     check_status,
+    generate_auction_id,
+    opresource,
     save_auction,
     auction_serialize,
-    apply_patch,
-    check_bids,
-    check_auction_status,
-    opresource,
+    set_ownership,
+
 )
 from openprocurement.auctions.flash.validation import (
     validate_patch_auction_data,
@@ -36,7 +34,7 @@ from openprocurement.auctions.flash.validation import (
 )
 
 
-LOGGER = getLogger(__name__)
+
 VIEW_MAP = {
     u'': auctions_real_by_dateModified_view,
     u'test': auctions_test_by_dateModified_view,
@@ -57,7 +55,6 @@ FEED = {
             path='/auctions',
             description="Open Contracting compatible data exchange format. See http://ocds.open-contracting.org/standard/r/master/#auction for more info")
 class AuctionsResource(APIResource):
-
 
     def __init__(self, request, context):
         super(AuctionsResource, self).__init__(request, context)
@@ -243,7 +240,7 @@ class AuctionsResource(APIResource):
                         {
                             "description": "футляри до державних нагород",
                             "primaryClassification": {
-                                "scheme": "CPV",
+                                "scheme": "CAV",
                                 "id": "44617100-9",
                                 "description": "Cartons"
                             },
@@ -315,7 +312,7 @@ class AuctionsResource(APIResource):
                         {
                             "description": "футляри до державних нагород",
                             "primaryClassification": {
-                                "scheme": "CPV",
+                                "scheme": "CAV",
                                 "id": "44617100-9",
                                 "description": "Cartons"
                             },
@@ -378,6 +375,7 @@ class AuctionsResource(APIResource):
 
 @opresource(name='Auction',
             path='/auctions/{auction_id}',
+   #        procurementMethodType='belowThreshold',
             description="Open Contracting compatible data exchange format. See http://ocds.open-contracting.org/standard/r/master/#auction for more info")
 class AuctionResource(APIResource):
 
@@ -432,7 +430,7 @@ class AuctionResource(APIResource):
                         {
                             "description": "футляри до державних нагород",
                             "primaryClassification": {
-                                "scheme": "CPV",
+                                "scheme": "CAV",
                                 "id": "44617100-9",
                                 "description": "Cartons"
                             },

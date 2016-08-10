@@ -270,6 +270,7 @@ class AuctionDocumentResourceTest(BaseAuctionWebTest):
         #dateModified = response.json["data"]['dateModified']
         self.assertIn(doc_id, response.headers['Location'])
         self.assertEqual(u'укр.doc', response.json["data"]["title"])
+        self.assertNotIn("documentType", response.json["data"])
 
         response = self.app.patch_json('/auctions/{}/documents/{}'.format(self.auction_id, doc_id), {"data": {
             "documentOf": "lot"
@@ -303,10 +304,23 @@ class AuctionDocumentResourceTest(BaseAuctionWebTest):
             {u'description': [u'relatedItem should be one of items'], u'location': u'body', u'name': u'relatedItem'}
         ])
 
-        response = self.app.patch_json('/auctions/{}/documents/{}'.format(self.auction_id, doc_id), {"data": {"description": "document description"}})
+        response = self.app.patch_json('/auctions/{}/documents/{}'.format(self.auction_id, doc_id), {"data": {
+            "description": "document description",
+            "documentType": 'auctionNotice'
+        }})
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(doc_id, response.json["data"]["id"])
+        self.assertIn("documentType", response.json["data"])
+        self.assertEqual(response.json["data"]["documentType"], 'auctionNotice')
+
+        response = self.app.patch_json('/auctions/{}/documents/{}'.format(self.auction_id, doc_id), {"data": {
+            "documentType": None
+        }})
+        self.assertEqual(response.status, '200 OK')
+        self.assertEqual(response.content_type, 'application/json')
+        self.assertEqual(doc_id, response.json["data"]["id"])
+        self.assertNotIn("documentType", response.json["data"])
 
         response = self.app.get('/auctions/{}/documents/{}'.format(self.auction_id, doc_id))
         self.assertEqual(response.status, '200 OK')
@@ -410,6 +424,27 @@ class MockKey(object):
             self.metadata['Content-MD5'] = value
         else:
             self.metadata[name] = value
+
+    def set_remote_metadata(self, metadata_plus, metadata_minus, preserve_acl,
+                            headers=None):
+        src_bucket = self.bucket
+        metadata = self.metadata
+        metadata.update(metadata_plus)
+        for h in metadata_minus:
+            if h in metadata:
+                del metadata[h]
+        rewritten_metadata = {}
+        for h in metadata:
+            if (h.startswith('x-goog-meta-') or h.startswith('x-amz-meta-')):
+                rewritten_h = (h.replace('x-goog-meta-', '')
+                               .replace('x-amz-meta-', ''))
+            else:
+                rewritten_h = h
+            rewritten_metadata[rewritten_h] = metadata[h]
+        metadata = rewritten_metadata
+        src_bucket.copy_key(self.name, self.bucket.name, self.name,
+                            metadata=metadata, preserve_acl=preserve_acl,
+                            headers=headers)
 
     def copy(self, dst_bucket_name, dst_key, metadata=NOT_IMPL,
              reduced_redundancy=NOT_IMPL, preserve_acl=NOT_IMPL):
