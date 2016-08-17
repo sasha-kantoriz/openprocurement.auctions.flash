@@ -254,11 +254,11 @@ def check_bids(request):
         [setattr(i.auctionPeriod, 'startDate', None) for i in auction.lots if i.numberOfBids < 2 and i.auctionPeriod and i.auctionPeriod.startDate]
         [setattr(i, 'status', 'unsuccessful') for i in auction.lots if i.numberOfBids == 0 and i.status == 'active']
         cleanup_bids_for_cancelled_lots(auction)
-        if max([i.numberOfBids for i in auction.lots]) < 2:
-            #auction.status = 'active.qualification'
-            add_next_award(request)
         if not set([i.status for i in auction.lots]).difference(set(['unsuccessful', 'cancelled'])):
             auction.status = 'unsuccessful'
+        elif max([i.numberOfBids for i in auction.lots if i.status == 'active']) < 2:
+            add_next_award(request)
+
     else:
         if auction.numberOfBids < 2 and auction.auctionPeriod and auction.auctionPeriod.startDate:
             auction.auctionPeriod.startDate = None
