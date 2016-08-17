@@ -512,7 +512,7 @@ auction_role = (blacklist('owner_token', '_attachments', 'revisions', 'bids', 'n
 #chronograph_role = whitelist('status', 'enquiryPeriod', 'tenderPeriod', 'auctionPeriod', 'awardPeriod', 'lots')
 chronograph_role = whitelist('auctionPeriod', 'lots', 'next_check')
 chronograph_view_role = whitelist('status', 'enquiryPeriod', 'tenderPeriod', 'auctionPeriod', 'awardPeriod', 'awards', 'lots', 'doc_id', 'submissionMethodDetails', 'mode', 'numberOfBids', 'complaints')
-Administrator_role = whitelist('status', 'mode', 'procuringEntity')
+Administrator_role = whitelist('status', 'mode', 'procuringEntity','auctionPeriod', 'lots')
 
 
 @implementer(IAuction)
