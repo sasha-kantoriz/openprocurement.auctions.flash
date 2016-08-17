@@ -11,7 +11,7 @@ from json import dumps
 from jsonpatch import make_patch, apply_patch as _apply_patch
 from jsonpointer import resolve_pointer
 from logging import getLogger
-from openprocurement.api.models import get_now, TZ, COMPLAINT_STAND_STILL_TIME, WORKING_DAYS
+from openprocurement.api.models import get_now, TZ, COMPLAINT_STAND_STILL_TIME, WORKING_DAYS, BLOCK_COMPLAINT_STATUS
 from openprocurement.api.utils import generate_id, calculate_business_date, encrypt, decrypt, apply_data_patch, \
                                       prepare_patch, get_revision_changes, set_ownership, set_modetest_titles, forbidden, APIResource, \
                                       add_logging_context, update_logging_context, context_unpack, set_renderer, fix_url, beforerender, \
@@ -325,26 +325,9 @@ def check_status(request):
             return
         standStillEnd = max(standStillEnds)
         if standStillEnd <= now:
-            pending_complaints = any([
-                i['status'] in ['claim', 'answered', 'pending']
-                for i in auction.complaints
-            ])
-            pending_awards_complaints = any([
-                i['status'] in ['claim', 'answered', 'pending']
-                for a in auction.awards
-                for i in a.complaints
-            ])
-            awarded = any([
-                i['status'] == 'active'
-                for i in auction.awards
-            ])
-            if not pending_complaints and not pending_awards_complaints and not awarded:
-                LOGGER.info('Switched auction {} to {}'.format(auction.id, 'unsuccessful'),
-                            extra=context_unpack(request, {'MESSAGE_ID': 'switched_auction_unsuccessful'}))
-                check_auction_status(request)
-                return
+            check_auction_status(request)
     elif auction.lots and auction.status in ['active.qualification', 'active.awarded']:
-        if any([i['status'] in ['claim', 'answered', 'pending'] and i.relatedLot is None for i in auction.complaints]):
+        if any([i['status'] in BLOCK_COMPLAINT_STATUS and i.relatedLot is None for i in auction.complaints]):
             return
         for lot in auction.lots:
             if lot['status'] != 'active':
@@ -359,30 +342,14 @@ def check_status(request):
                 continue
             standStillEnd = max(standStillEnds)
             if standStillEnd <= now:
-                pending_complaints = any([
-                    i['status'] in ['claim', 'answered', 'pending'] and i.relatedLot == lot.id
-                    for i in auction.complaints
-                ])
-                pending_awards_complaints = any([
-                    i['status'] in ['claim', 'answered', 'pending']
-                    for a in lot_awards
-                    for i in a.complaints
-                ])
-                awarded = any([
-                    i['status'] == 'active'
-                    for i in lot_awards
-                ])
-                if not pending_complaints and not pending_awards_complaints and not awarded:
-                    LOGGER.info('Switched lot {} of auction {} to {}'.format(lot['id'], auction.id, 'unsuccessful'),
-                                extra=context_unpack(request, {'MESSAGE_ID': 'switched_lot_unsuccessful'}, {'LOT_ID': lot['id']}))
-                    check_auction_status(request)
+                check_auction_status(request)
 
 
 def check_auction_status(request):
     auction = request.validated['auction']
     now = get_now()
     if auction.lots:
-        if any([i.status in ['claim', 'answered', 'pending'] and i.relatedLot is None for i in auction.complaints]):
+        if any([i.status in BLOCK_COMPLAINT_STATUS and i.relatedLot is None for i in auction.complaints]):
             return
         for lot in auction.lots:
             if lot.status != 'active':
@@ -392,11 +359,11 @@ def check_auction_status(request):
                 continue
             last_award = lot_awards[-1]
             pending_complaints = any([
-                i['status'] in ['claim', 'answered', 'pending'] and i.relatedLot == lot.id
+                i['status'] in BLOCK_COMPLAINT_STATUS and i.relatedLot == lot.id
                 for i in auction.complaints
             ])
             pending_awards_complaints = any([
-                i.status in ['claim', 'answered', 'pending']
+                i.status in BLOCK_COMPLAINT_STATUS
                 for a in lot_awards
                 for i in a.complaints
             ])
@@ -407,24 +374,39 @@ def check_auction_status(request):
             if pending_complaints or pending_awards_complaints or not stand_still_end <= now:
                 continue
             elif last_award.status == 'unsuccessful':
+                LOGGER.info('Switched lot {} of auction {} to {}'.format(lot.id, auction.id, 'unsuccessful'),
+                            extra=context_unpack(request, {'MESSAGE_ID': 'switched_lot_unsuccessful'},
+                                                 {'LOT_ID': lot.id}))
                 lot.status = 'unsuccessful'
                 continue
             elif last_award.status == 'active' and any([i.status == 'active' and i.awardID == last_award.id for i in auction.contracts]):
+                LOGGER.info('Switched lot {} of auction {} to {}'.format(lot.id, auction.id, 'complete'),
+                            extra=context_unpack(request, {'MESSAGE_ID': 'switched_lot_complete'},
+                                                 {'LOT_ID': lot.id}))
                 lot.status = 'complete'
         statuses = set([lot.status for lot in auction.lots])
         if statuses == set(['cancelled']):
+            LOGGER.info('Switched lot {} of auction {} to {}'.format(lot.id, auction.id, 'cancelled'),
+                        extra=context_unpack(request, {'MESSAGE_ID': 'switched_lot_cancelled'},
+                                             {'LOT_ID': lot.id}))
             auction.status = 'cancelled'
         elif not statuses.difference(set(['unsuccessful', 'cancelled'])):
+            LOGGER.info('Switched lot {} of auction {} to {}'.format(lot.id, auction.id, 'unsuccessful'),
+                        extra=context_unpack(request, {'MESSAGE_ID': 'switched_lot_unsuccessful'},
+                                             {'LOT_ID': lot.id}))
             auction.status = 'unsuccessful'
         elif not statuses.difference(set(['complete', 'unsuccessful', 'cancelled'])):
+            LOGGER.info('Switched lot {} of auction {} to {}'.format(lot.id, auction.id, 'complete'),
+                        extra=context_unpack(request, {'MESSAGE_ID': 'switched_lot_complete'},
+                                             {'LOT_ID': lot.id}))
             auction.status = 'complete'
     else:
         pending_complaints = any([
-            i.status in ['claim', 'answered', 'pending']
+            i.status in BLOCK_COMPLAINT_STATUS
             for i in auction.complaints
         ])
         pending_awards_complaints = any([
-            i.status in ['claim', 'answered', 'pending']
+            i.status in BLOCK_COMPLAINT_STATUS
             for a in auction.awards
             for i in a.complaints
         ])
@@ -436,12 +418,16 @@ def check_auction_status(request):
         stand_still_end = max(stand_still_ends) if stand_still_ends else now
         stand_still_time_expired = stand_still_end < now
         active_awards = any([
-            a.status in ['active', 'pending']
+            a.status == 'active'
             for a in auction.awards
         ])
         if not active_awards and not pending_complaints and not pending_awards_complaints and stand_still_time_expired:
+            LOGGER.info('Switched auction {} to {}'.format(auction.id, 'unsuccessful'),
+                        extra=context_unpack(request, {'MESSAGE_ID': 'switched_auction_unsuccessful'}))
             auction.status = 'unsuccessful'
         if auction.contracts and auction.contracts[-1].status == 'active':
+            LOGGER.info('Switched auction {} to {}'.format(auction.id, 'unsuccessful'),
+                        extra=context_unpack(request, {'MESSAGE_ID': 'switched_auction_complete'}))
             auction.status = 'complete'
 
 
