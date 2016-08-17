@@ -435,7 +435,7 @@ class Contract(Contract):
     dateSigned = IsoDateTimeType()
     items = ListType(ModelType(Item))
     suppliers = ListType(ModelType(Organization), min_size=1, max_size=1)
-    date = IsoDateTimeType(default=get_now)
+    date = IsoDateTimeType()
 
 class Award(Award):
     id = MD5Type(required=True, default=lambda: uuid4().hex)
