@@ -28,6 +28,20 @@ from openprocurement.api.validation import (
             description="Auction award documents")
 class AuctionAwardDocumentResource(APIResource):
 
+    def validate_award_document(self, operation):
+        if self.request.validated['auction_status'] != 'active.qualification':
+            self.request.errors.add('body', 'data', 'Can\'t {} document in current ({}) auction status'.format(operation,
+                                                                                                              self.request.validated[
+                                                                                                                  'auction_status']))
+            self.request.errors.status = 403
+            return
+        if any([i.status != 'active' for i in self.request.validated['auction'].lots if
+                i.id == self.request.validated['award'].lotID]):
+            self.request.errors.add('body', 'data', 'Can {} document only in active lot status'.format(operation))
+            self.request.errors.status = 403
+            return
+        return True
+
     @json_view(permission='view_auction')
     def collection_get(self):
         """Auction Award Documents List"""
@@ -44,13 +58,7 @@ class AuctionAwardDocumentResource(APIResource):
     def collection_post(self):
         """Auction Award Document Upload
         """
-        if self.request.validated['auction_status'] != 'active.qualification':
-            self.request.errors.add('body', 'data', 'Can\'t add document in current ({}) auction status'.format(self.request.validated['auction_status']))
-            self.request.errors.status = 403
-            return
-        if any([i.status != 'active' for i in self.request.validated['auction'].lots if i.id == self.request.context.lotID]):
-            self.request.errors.add('body', 'data', 'Can add document only in active lot status')
-            self.request.errors.status = 403
+        if not self.validate_award_document('add'):
             return
         document = upload_file(self.request)
         self.context.documents.append(document)
@@ -79,13 +87,7 @@ class AuctionAwardDocumentResource(APIResource):
     @json_view(validators=(validate_file_update,), permission='edit_auction')
     def put(self):
         """Auction Award Document Update"""
-        if self.request.validated['auction_status'] != 'active.qualification':
-            self.request.errors.add('body', 'data', 'Can\'t update document in current ({}) auction status'.format(self.request.validated['auction_status']))
-            self.request.errors.status = 403
-            return
-        if any([i.status != 'active' for i in self.request.validated['auction'].lots if i.id == self.request.validated['award'].lotID]):
-            self.request.errors.add('body', 'data', 'Can update document only in active lot status')
-            self.request.errors.status = 403
+        if not self.validate_award_document('update'):
             return
         document = upload_file(self.request)
         self.request.validated['award'].documents.append(document)
@@ -97,13 +99,7 @@ class AuctionAwardDocumentResource(APIResource):
     @json_view(content_type="application/json", validators=(validate_patch_document_data,), permission='edit_auction')
     def patch(self):
         """Auction Award Document Update"""
-        if self.request.validated['auction_status'] != 'active.qualification':
-            self.request.errors.add('body', 'data', 'Can\'t update document in current ({}) auction status'.format(self.request.validated['auction_status']))
-            self.request.errors.status = 403
-            return
-        if any([i.status != 'active' for i in self.request.validated['auction'].lots if i.id == self.request.validated['award'].lotID]):
-            self.request.errors.add('body', 'data', 'Can update document only in active lot status')
-            self.request.errors.status = 403
+        if not self.validate_award_document('update'):
             return
         if apply_patch(self.request, src=self.request.context.serialize()):
             update_file_content_type(self.request)
