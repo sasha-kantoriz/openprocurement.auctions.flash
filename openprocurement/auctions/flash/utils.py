@@ -11,7 +11,7 @@ from json import dumps
 from jsonpatch import make_patch, apply_patch as _apply_patch
 from jsonpointer import resolve_pointer
 from logging import getLogger
-from openprocurement.api.models import get_now, TZ, COMPLAINT_STAND_STILL_TIME, WORKING_DAYS, BLOCK_COMPLAINT_STATUS
+from openprocurement.api.models import get_now, TZ, COMPLAINT_STAND_STILL_TIME, WORKING_DAYS
 from openprocurement.api.utils import generate_id, calculate_business_date, encrypt, decrypt, apply_data_patch, \
                                       prepare_patch, get_revision_changes, set_ownership, set_modetest_titles, forbidden, APIResource, \
                                       add_logging_context, update_logging_context, context_unpack, set_renderer, fix_url, beforerender, \
@@ -327,7 +327,7 @@ def check_status(request):
         if standStillEnd <= now:
             check_auction_status(request)
     elif auction.lots and auction.status in ['active.qualification', 'active.awarded']:
-        if any([i['status'] in BLOCK_COMPLAINT_STATUS and i.relatedLot is None for i in auction.complaints]):
+        if any([i['status'] in auction.block_complaint_status and i.relatedLot is None for i in auction.complaints]):
             return
         for lot in auction.lots:
             if lot['status'] != 'active':
@@ -343,13 +343,14 @@ def check_status(request):
             standStillEnd = max(standStillEnds)
             if standStillEnd <= now:
                 check_auction_status(request)
+                return
 
 
 def check_auction_status(request):
     auction = request.validated['auction']
     now = get_now()
     if auction.lots:
-        if any([i.status in BLOCK_COMPLAINT_STATUS and i.relatedLot is None for i in auction.complaints]):
+        if any([i.status in auction.block_complaint_status and i.relatedLot is None for i in auction.complaints]):
             return
         for lot in auction.lots:
             if lot.status != 'active':
@@ -359,11 +360,11 @@ def check_auction_status(request):
                 continue
             last_award = lot_awards[-1]
             pending_complaints = any([
-                i['status'] in BLOCK_COMPLAINT_STATUS and i.relatedLot == lot.id
+                i['status'] in auction.block_complaint_status and i.relatedLot == lot.id
                 for i in auction.complaints
             ])
             pending_awards_complaints = any([
-                i.status in BLOCK_COMPLAINT_STATUS
+                i.status in auction.block_complaint_status
                 for a in lot_awards
                 for i in a.complaints
             ])
@@ -402,11 +403,11 @@ def check_auction_status(request):
             auction.status = 'complete'
     else:
         pending_complaints = any([
-            i.status in BLOCK_COMPLAINT_STATUS
+            i.status in auction.block_complaint_status
             for i in auction.complaints
         ])
         pending_awards_complaints = any([
-            i.status in BLOCK_COMPLAINT_STATUS
+            i.status in auction.block_complaint_status
             for a in auction.awards
             for i in a.complaints
         ])
