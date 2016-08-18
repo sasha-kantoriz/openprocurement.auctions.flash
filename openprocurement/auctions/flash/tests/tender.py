@@ -548,14 +548,11 @@ class AuctionResourceTest(BaseWebTest):
         data = test_auction_data["procuringEntity"].copy()
         del data['kind']
         test_auction_data["procuringEntity"] = data
-        response = self.app.post_json(request_path, {'data': test_auction_data}, status=403)
+        response = self.app.post_json(request_path, {'data': test_auction_data}, status=201)
         test_auction_data["procuringEntity"] = procuringEntity
-        self.assertEqual(response.status, '403 Forbidden')
+        self.assertEqual(response.status, '201 Created')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['status'], 'error')
-        self.assertEqual(response.json['errors'], [
-            {u'description': u"'' procuringEntity cannot publish this type of procedure. Only general, special, defense, other are allowed.", u'location': u'procuringEntity', u'name': u'kind'}
-        ])
+
 
     def test_create_auction_generated(self):
         data = test_auction_data.copy()

@@ -621,7 +621,7 @@ class Auction(SchematicsDocument, Model):
 
     create_accreditation = 1
     edit_accreditation = 2
-    procuring_entity_kinds = ['general', 'special', 'defense', 'other']
+    procuring_entity_kinds = ['general', 'special', 'defense', 'other', '']
     block_complaint_status = ['claim', 'answered', 'pending']
 
     __name__ = ''
