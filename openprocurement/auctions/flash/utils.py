@@ -417,11 +417,9 @@ def check_auction_status(request):
         ]
         stand_still_end = max(stand_still_ends) if stand_still_ends else now
         stand_still_time_expired = stand_still_end < now
-        active_awards = any([
-            a.status == 'active'
-            for a in auction.awards
-        ])
-        if not active_awards and not pending_complaints and not pending_awards_complaints and stand_still_time_expired:
+        last_award_status = auction.awards[-1].status if auction.awards else ''
+        if not pending_complaints and not pending_awards_complaints and stand_still_time_expired \
+                and last_award_status == 'unsuccessful':
             LOGGER.info('Switched auction {} to {}'.format(auction.id, 'unsuccessful'),
                         extra=context_unpack(request, {'MESSAGE_ID': 'switched_auction_unsuccessful'}))
             auction.status = 'unsuccessful'
