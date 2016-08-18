@@ -717,7 +717,7 @@ class Auction(SchematicsDocument, Model):
                     continue
                 lot_awards = [i for i in self.awards if i.lotID == lot.id]
                 pending_complaints = any([
-                                             i['status'] in BLOCK_COMPLAINT_STATUS and i.relatedLot == lot.id
+                                             i['status'] in self.block_complaint_status and i.relatedLot == lot.id
                                              for i in self.complaints
                                              ])
                 pending_awards_complaints = any([
