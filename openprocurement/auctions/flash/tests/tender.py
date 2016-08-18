@@ -3,6 +3,7 @@ import unittest
 from copy import deepcopy
 from pkg_resources import get_distribution
 from datetime import timedelta
+from uuid import uuid4
 
 from openprocurement.api.utils import ROUTE_PREFIX
 from openprocurement.api.models import get_now
@@ -1055,6 +1056,13 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(response.json['errors'], [
             {u'description': u'Not Found', u'location': u'url', u'name': u'auction_id'}
         ])
+
+        # put custom document object into database to check tender construction on non-Tender data
+        data = {'contract': 'test', '_id': uuid4().hex}
+        self.db.save(data)
+
+        response = self.app.get('/auctions/{}'.format(data['_id']), status=404)
+        self.assertEqual(response.status, '404 Not Found')
 
 
     def test_guarantee(self):

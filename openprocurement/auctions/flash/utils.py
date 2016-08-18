@@ -565,7 +565,7 @@ def set_logging_context(event):
 def extract_auction_adapter(request, auction_id):
     db = request.registry.db
     doc = db.get(auction_id)
-    if doc is None:
+    if doc is None or doc.get('doc_type') != 'Auction':
         request.errors.add('url', 'auction_id', 'Not Found')
         request.errors.status = 404
         raise error_handler(request.errors)
