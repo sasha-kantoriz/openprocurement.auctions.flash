@@ -1,15 +1,6 @@
 # -*- coding: utf-8 -*-
-from logging import getLogger
-from openprocurement.api.models import get_now
-from openprocurement.api.utils import (
-    context_unpack,
-    decrypt,
-    encrypt,
-    generate_id,
-    json_view,
-    set_ownership,
-)
-from openprocurement.auctions.flash.design import (
+from functools import partial
+from openprocurement.auctions.flash.design import ( 
     FIELDS,
     auctions_by_dateModified_view,
     auctions_real_by_dateModified_view,
@@ -18,14 +9,24 @@ from openprocurement.auctions.flash.design import (
     auctions_real_by_local_seq_view,
     auctions_test_by_local_seq_view,
 )
+from openprocurement.api.models import get_now
+from openprocurement.api.utils import (
+    context_unpack,
+    decrypt,
+    encrypt,
+    generate_id,
+    json_view,
+    APIResource,
+)
 from openprocurement.auctions.flash.utils import (
+    apply_patch,
+    check_status,
     generate_auction_id,
+    opresource,
     save_auction,
     auction_serialize,
-    apply_patch,
-    check_bids,
-    check_auction_status,
-    opresource,
+    set_ownership,
+
 )
 from openprocurement.auctions.flash.validation import (
     validate_patch_auction_data,
@@ -33,7 +34,7 @@ from openprocurement.auctions.flash.validation import (
 )
 
 
-LOGGER = getLogger(__name__)
+
 VIEW_MAP = {
     u'': auctions_real_by_dateModified_view,
     u'test': auctions_test_by_dateModified_view,
@@ -53,13 +54,12 @@ FEED = {
 @opresource(name='Auctions',
             path='/auctions',
             description="Open Contracting compatible data exchange format. See http://ocds.open-contracting.org/standard/r/master/#auction for more info")
-class AuctionsResource(object):
+class AuctionsResource(APIResource):
 
     def __init__(self, request, context):
-        self.request = request
+        super(AuctionsResource, self).__init__(request, context)
         self.server = request.registry.couchdb_server
-        self.db = request.registry.db
-        self.server_id = request.registry.server_id
+        self.update_after = request.registry.update_after
 
     @json_view(permission='view_auction')
     def get(self):
@@ -106,7 +106,7 @@ class AuctionsResource(object):
         if limit:
             params['limit'] = limit
             pparams['limit'] = limit
-        limit = int(limit) if limit.isdigit() and int(limit) > 0 else 100
+        limit = int(limit) if limit.isdigit() and (100 if fields else 1000) >= int(limit) > 0 else 100
         descending = bool(self.request.params.get('descending'))
         offset = self.request.params.get('offset', '')
         if descending:
@@ -141,29 +141,33 @@ class AuctionsResource(object):
             else:
                 view_offset = '9' if descending else ''
         list_view = view_map.get(mode, view_map[u''])
+        if self.update_after:
+            view = partial(list_view, self.db, limit=view_limit, startkey=view_offset, descending=descending, stale='update_after')
+        else:
+            view = partial(list_view, self.db, limit=view_limit, startkey=view_offset, descending=descending)
         if fields:
             if not changes and set(fields).issubset(set(FIELDS)):
                 results = [
                     (dict([(i, j) for i, j in x.value.items() + [('id', x.id), ('dateModified', x.key)] if i in view_fields]), x.key)
-                    for x in list_view(self.db, limit=view_limit, startkey=view_offset, descending=descending)
+                    for x in view()
                 ]
             elif changes and set(fields).issubset(set(FIELDS)):
                 results = [
                     (dict([(i, j) for i, j in x.value.items() + [('id', x.id)] if i in view_fields]), x.key)
-                    for x in list_view(self.db, limit=view_limit, startkey=view_offset, descending=descending)
+                    for x in view()
                 ]
             elif fields:
-                LOGGER.info('Used custom fields for auctions list: {}'.format(','.join(sorted(fields))),
+                self.LOGGER.info('Used custom fields for auctions list: {}'.format(','.join(sorted(fields))),
                             extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_list_custom'}))
 
                 results = [
                     (auction_serialize(self.request, i[u'doc'], view_fields), i.key)
-                    for i in list_view(self.db, limit=view_limit, startkey=view_offset, descending=descending, include_docs=True)
+                    for i in view(include_docs=True)
                 ]
         else:
             results = [
                 ({'id': i.id, 'dateModified': i.value['dateModified']} if changes else {'id': i.id, 'dateModified': i.key}, i.key)
-                for i in list_view(self.db, limit=view_limit, startkey=view_offset, descending=descending)
+                for i in view()
             ]
         if results:
             params['offset'], pparams['offset'] = results[-1][1], results[0][1]
@@ -236,7 +240,7 @@ class AuctionsResource(object):
                         {
                             "description": "футляри до державних нагород",
                             "primaryClassification": {
-                                "scheme": "CPV",
+                                "scheme": "CAV",
                                 "id": "44617100-9",
                                 "description": "Cartons"
                             },
@@ -276,7 +280,7 @@ class AuctionsResource(object):
         .. sourcecode:: http
 
             HTTP/1.1 201 Created
-            Location: http://localhost.auctions.flash.0.1/auctions/64e93250be76435397e8c992ed4214d1
+            Location: http://localhost/api/0.1/auctions/64e93250be76435397e8c992ed4214d1
             Content-Type: application/json
 
             {
@@ -308,7 +312,7 @@ class AuctionsResource(object):
                         {
                             "description": "футляри до державних нагород",
                             "primaryClassification": {
-                                "scheme": "CPV",
+                                "scheme": "CAV",
                                 "id": "44617100-9",
                                 "description": "Cartons"
                             },
@@ -347,16 +351,16 @@ class AuctionsResource(object):
         auction_id = generate_id()
         auction = self.request.validated['auction']
         auction.id = auction_id
-        if not auction.enquiryPeriod.startDate:
-            auction.enquiryPeriod.startDate = get_now()
-        auction.auctionID = generate_auction_id(auction.enquiryPeriod.startDate, self.db, self.server_id)
-        if not auction.tenderPeriod.startDate:
-            auction.tenderPeriod.startDate = auction.enquiryPeriod.endDate
+        auction.auctionID = generate_auction_id(get_now(), self.db, self.server_id)
+        if hasattr(auction, "initialize"):
+            auction.initialize()
+        if self.request.json_body['data'].get('status') == 'draft':
+            auction.status = 'draft'
         set_ownership(auction, self.request)
         self.request.validated['auction'] = auction
         self.request.validated['auction_src'] = {}
         if save_auction(self.request):
-            LOGGER.info('Created auction {} ({})'.format(auction_id, auction.auctionID),
+            self.LOGGER.info('Created auction {} ({})'.format(auction_id, auction.auctionID),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_create'}, {'auction_id': auction_id, 'auctionID': auction.auctionID}))
             self.request.response.status = 201
             self.request.response.headers[
@@ -371,12 +375,9 @@ class AuctionsResource(object):
 
 @opresource(name='Auction',
             path='/auctions/{auction_id}',
+   #        procurementMethodType='belowThreshold',
             description="Open Contracting compatible data exchange format. See http://ocds.open-contracting.org/standard/r/master/#auction for more info")
-class AuctionResource(object):
-
-    def __init__(self, request, context):
-        self.request = request
-        self.db = request.registry.db
+class AuctionResource(APIResource):
 
     @json_view(permission='view_auction')
     def get(self):
@@ -429,7 +430,7 @@ class AuctionResource(object):
                         {
                             "description": "футляри до державних нагород",
                             "primaryClassification": {
-                                "scheme": "CPV",
+                                "scheme": "CAV",
                                 "id": "44617100-9",
                                 "description": "Cartons"
                             },
@@ -465,8 +466,10 @@ class AuctionResource(object):
             }
 
         """
-        auction = self.request.validated['auction']
-        auction_data = auction.serialize('chronograph_view' if self.request.authenticated_role == 'chronograph' else auction.status)
+        if self.request.authenticated_role == 'chronograph':
+            auction_data = self.context.serialize('chronograph_view')
+        else:
+            auction_data = self.context.serialize(self.context.status)
         return {'data': auction_data}
 
     #@json_view(content_type="application/json", validators=(validate_auction_data, ), permission='edit_auction')
@@ -529,25 +532,17 @@ class AuctionResource(object):
             }
 
         """
-        auction = self.request.validated['auction']
+        auction = self.context
         if self.request.authenticated_role != 'Administrator' and auction.status in ['complete', 'unsuccessful', 'cancelled']:
             self.request.errors.add('body', 'data', 'Can\'t update auction in current ({}) status'.format(auction.status))
             self.request.errors.status = 403
             return
-        data = self.request.validated['data']
-        if self.request.authenticated_role == 'auction_owner' and 'status' in data and data['status'] not in ['cancelled', auction.status]:
-            self.request.errors.add('body', 'data', 'Can\'t update auction status')
-            self.request.errors.status = 403
-            return
-        if self.request.authenticated_role == 'chronograph' and auction.status == 'active.tendering' and data.get('status', auction.status) == 'active.auction':
+        if self.request.authenticated_role == 'chronograph':
             apply_patch(self.request, save=False, src=self.request.validated['auction_src'])
-            check_bids(self.request)
-            save_auction(self.request)
-        elif self.request.authenticated_role == 'chronograph' and auction.status in ['active.qualification', 'active.awarded'] and data.get('status', auction.status) == auction.status:
-            check_auction_status(self.request)
+            check_status(self.request)
             save_auction(self.request)
         else:
             apply_patch(self.request, src=self.request.validated['auction_src'])
-        LOGGER.info('Updated auction {}'.format(auction.id),
+        self.LOGGER.info('Updated auction {}'.format(auction.id),
                     extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_patch'}))
         return {'data': auction.serialize(auction.status)}

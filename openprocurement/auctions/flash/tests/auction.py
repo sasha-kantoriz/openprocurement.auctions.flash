@@ -3,7 +3,7 @@ import unittest
 from datetime import timedelta
 
 from openprocurement.api.models import get_now
-from openprocurement.auctions.flash.tests.base import BaseAuctionWebTest, test_auction_data, test_features_auction_data, test_bids, test_lots
+from openprocurement.auctions.flash.tests.base import BaseAuctionWebTest, test_auction_data, test_features_auction_data, test_bids, test_lots, test_organization
 
 
 class AuctionAuctionResourceTest(BaseAuctionWebTest):
@@ -280,7 +280,7 @@ class AuctionSameValueAuctionResourceTest(BaseAuctionWebTest):
     initial_bids = [
         {
             "tenderers": [
-                test_auction_data["procuringEntity"]
+                test_organization
             ],
             "value": {
                 "amount": 469,
@@ -334,9 +334,7 @@ class AuctionLotAuctionResourceTest(AuctionAuctionResourceTest):
         self.assertEqual(response.status, '403 Forbidden')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['errors'][0]["description"], "Can't get auction info in current (active.tendering) auction status")
-
         self.set_status('active.auction')
-
         response = self.app.get('/auctions/{}/auction'.format(self.auction_id))
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
@@ -454,7 +452,11 @@ class AuctionLotAuctionResourceTest(AuctionAuctionResourceTest):
         self.assertEqual(response.json['errors'][0]["description"], "Can't update auction urls in current (active.tendering) auction status")
 
         self.set_status('active.auction')
+        self.app.authorization = ('Basic', ('chronograph', ''))
+        response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': {'id': self.auction_id}})
+        self.assertEqual(response.status, '200 OK')
 
+        self.app.authorization = ('Basic', ('auction', ''))
         response = self.app.patch_json('/auctions/{}/auction'.format(self.auction_id), {'data': {'bids': [{'invalid_field': 'invalid_value'}]}}, status=422)
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
@@ -765,7 +767,11 @@ class AuctionMultipleLotAuctionResourceTest(AuctionAuctionResourceTest):
         self.assertEqual(response.json['errors'][0]["description"], "Can't update auction urls in current (active.tendering) auction status")
 
         self.set_status('active.auction')
+        self.app.authorization = ('Basic', ('chronograph', ''))
+        response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': {'id': self.auction_id}})
+        self.assertEqual(response.status, '200 OK')
 
+        self.app.authorization = ('Basic', ('auction', ''))
         response = self.app.patch_json('/auctions/{}/auction'.format(self.auction_id), {'data': {'bids': [{'invalid_field': 'invalid_value'}]}}, status=422)
         self.assertEqual(response.status, '422 Unprocessable Entity')
         self.assertEqual(response.content_type, 'application/json')
@@ -984,7 +990,7 @@ class AuctionFeaturesAuctionResourceTest(BaseAuctionWebTest):
                 for i in test_features_auction_data['features']
             ],
             "tenderers": [
-                test_auction_data["procuringEntity"]
+                test_organization
             ],
             "value": {
                 "amount": 469,
@@ -1001,7 +1007,7 @@ class AuctionFeaturesAuctionResourceTest(BaseAuctionWebTest):
                 for i in test_features_auction_data['features']
             ],
             "tenderers": [
-                test_auction_data["procuringEntity"]
+                test_organization
             ],
             "value": {
                 "amount": 479,

@@ -6,31 +6,35 @@ from copy import deepcopy
 from datetime import datetime, timedelta
 from uuid import uuid4
 
-from openprocurement.api.utils import VERSION
+from openprocurement.api.models import SANDBOX_MODE
+from openprocurement.api.utils import VERSION, apply_data_patch
 
 
 now = datetime.now()
+test_organization = {
+    "name": u"Державне управління справами",
+    "identifier": {
+        "scheme": u"UA-EDR",
+        "id": u"00037256",
+        "uri": u"http://www.dus.gov.ua/"
+    },
+    "address": {
+        "countryName": u"Україна",
+        "postalCode": u"01220",
+        "region": u"м. Київ",
+        "locality": u"м. Київ",
+        "streetAddress": u"вул. Банкова, 11, корпус 1"
+    },
+    "contactPoint": {
+        "name": u"Державне управління справами",
+        "telephone": u"0440000000"
+    }
+}
+test_procuringEntity = test_organization.copy()
+test_procuringEntity["kind"] = "general"
 test_auction_data = {
     "title": u"футляри до державних нагород",
-    "procuringEntity": {
-        "name": u"Державне управління справами",
-        "identifier": {
-            "scheme": u"UA-EDR",
-            "id": u"00037256",
-            "uri": u"http://www.dus.gov.ua/"
-        },
-        "address": {
-            "countryName": u"Україна",
-            "postalCode": u"01220",
-            "region": u"м. Київ",
-            "locality": u"м. Київ",
-            "streetAddress": u"вул. Банкова, 11, корпус 1"
-        },
-        "contactPoint": {
-            "name": u"Державне управління справами",
-            "telephone": u"0440000000"
-        }
-    },
+    "procuringEntity": test_procuringEntity,
     "value": {
         "amount": 100,
         "currency": u"UAH"
@@ -47,11 +51,29 @@ test_auction_data = {
                 "id": u"70122000-2",
                 "description": u"Земля"
             },
+            "additionalClassifications": [
+                {
+                    "scheme": u"ДКПП",
+                    "id": u"17.21.1",
+                    "description": u"папір і картон гофровані, паперова й картонна тара"
+                }
+            ],
             "unit": {
                 "name": u"item",
                 "code": u"44617100-9"
             },
-            "quantity": 5
+            "quantity": 5,
+            "deliveryDate": {
+                "startDate": (now + timedelta(days=2)).isoformat(),
+                "endDate": (now + timedelta(days=5)).isoformat()
+            },
+            "deliveryAddress": {
+                "countryName": u"Україна",
+                "postalCode": "79000",
+                "region": u"м. Київ",
+                "locality": u"м. Київ",
+                "streetAddress": u"вул. Банкова 1"
+            }
         }
     ],
     "enquiryPeriod": {
@@ -62,7 +84,8 @@ test_auction_data = {
     },
     "procurementMethodType": "belowThreshold",
 }
-
+if SANDBOX_MODE:
+    test_auction_data['procurementMethodDetails'] = 'quick, accelerator=1440'
 test_features_auction_data = test_auction_data.copy()
 test_features_item = test_features_auction_data['items'][0].copy()
 test_features_item['id'] = "1"
@@ -111,7 +134,7 @@ test_features_auction_data["features"] = [
 test_bids = [
     {
         "tenderers": [
-            test_auction_data["procuringEntity"]
+            test_organization
         ],
         "value": {
             "amount": 469,
@@ -121,7 +144,7 @@ test_bids = [
     },
     {
         "tenderers": [
-            test_auction_data["procuringEntity"]
+            test_organization
         ],
         "value": {
             "amount": 479,
@@ -193,6 +216,7 @@ class BaseWebTest(unittest.TestCase):
             "config:tests.ini", relative_to=os.path.dirname(__file__))
         self.app.RequestClass = PrefixedRequestClass
         self.app.authorization = ('Basic', ('token', ''))
+        #self.app.authorization = ('Basic', ('broker', ''))
         self.couchdb_server = self.app.app.registry.couchdb_server
         self.db = self.app.app.registry.db
 
@@ -349,9 +373,13 @@ class BaseAuctionWebTest(BaseWebTest):
                 })
         if extra:
             data.update(extra)
+        auction = self.db.get(self.auction_id)
+        auction.update(apply_data_patch(auction, data))
+        self.db.save(auction)
         authorization = self.app.authorization
         self.app.authorization = ('Basic', ('chronograph', ''))
-        response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': data})
+        #response = self.app.patch_json('/auctions/{}'.format(self.auction_id), {'data': {'id': self.auction_id}})
+        response = self.app.get('/auctions/{}'.format(self.auction_id))
         self.app.authorization = authorization
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
@@ -374,9 +402,11 @@ class BaseAuctionWebTest(BaseWebTest):
                 item['relatedLot'] = lots[i % len(lots)]['id']
         response = self.app.post_json('/auctions', {'data': data})
         auction = response.json['data']
+        self.auction_token = response.json['access']['token']
         self.auction_id = auction['id']
         status = auction['status']
         if self.initial_bids:
+            self.initial_bids_tokens = {}
             response = self.set_status('active.tendering')
             status = response.json['data']['status']
             bids = []
@@ -394,6 +424,7 @@ class BaseAuctionWebTest(BaseWebTest):
                 response = self.app.post_json('/auctions/{}/bids'.format(self.auction_id), {'data': i})
                 self.assertEqual(response.status, '201 Created')
                 bids.append(response.json['data'])
+                self.initial_bids_tokens[response.json['data']['id']] = response.json['access']['token']
             self.initial_bids = bids
         if self.initial_status != status:
             self.set_status(self.initial_status)

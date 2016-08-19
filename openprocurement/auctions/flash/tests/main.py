@@ -2,7 +2,8 @@
 
 import unittest
 
-from openprocurement.auctions.flash.tests import auction, award, bidder, document, migration, tender, question, complaint
+from openprocurement.auctions.flash.tests import auction, award, bidder, document, tender, question, complaint
+#from openprocurement.auctions.flash.tests import migration
 
 
 def suite():

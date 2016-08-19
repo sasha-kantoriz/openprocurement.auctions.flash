@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from openprocurement.api.models import get_now
-from openprocurement.api.utils import update_logging_context
+from schematics.exceptions import ModelValidationError, ModelConversionError
+from openprocurement.api.utils import update_logging_context, apply_data_patch
 from openprocurement.api.validation import validate_json_data, validate_data
 from openprocurement.auctions.flash.models import Auction, Bid, Award, Document, Question, Complaint, Contract, Cancellation, Lot
 
@@ -13,11 +14,36 @@ def validate_auction_data(request):
         return
 
     model = request.auction_from_data(data, create=False)
-    return validate_data(request, model, data=data)
+    if not request.check_accreditation(model.create_accreditation):
+        request.errors.add('procurementMethodType', 'accreditation', 'Broker Accreditation level does not permit auction creation')
+        request.errors.status = 403
+        return
+    data = validate_data(request, model, data=data)
+    if data and data.get('mode', None) is None and request.check_accreditation('t'):
+        request.errors.add('procurementMethodType', 'mode', 'Broker Accreditation level does not permit auction creation')
+        request.errors.status = 403
+        return
+    if data and data.get('procuringEntity', {}).get('kind', '') not in model.procuring_entity_kinds:
+        request.errors.add('procuringEntity',
+                           'kind',
+                           '{kind!r} procuringEntity cannot publish this type of procedure. '
+                           'Only {kinds} are allowed.'.format(kind=data.get('procuringEntity', {}).get('kind', ''), kinds=', '.join(model.procuring_entity_kinds)))
+        request.errors.status = 403
 
 
 def validate_patch_auction_data(request):
-    return validate_data(request, Auction, True)
+    data = validate_json_data(request)
+    if data is None:
+        return
+    if request.context.status != 'draft':
+        return validate_data(request, type(request.auction), True, data)
+    default_status = type(request.auction).fields['status'].default
+    if data.get('status') != default_status:
+        request.errors.add('body', 'data', 'Can\'t update auction in current (draft) status')
+        request.errors.status = 403
+        return
+    request.validated['data'] = {'status': default_status}
+    request.context.status = default_status
 
 
 def validate_auction_auction_data(request):
@@ -58,21 +84,25 @@ def validate_auction_auction_data(request):
                 x if x['id'] == lot_id else {}
                 for (y, x) in sorted(zip([auction_lots_ids.index(i['id']) for i in data.get('lots', [])], data.get('lots', [])))
             ]
-        auction_bids_lots_ids = dict([(i.id, [j['relatedLot'] for j in i.lotValues]) for i in auction.bids])
-        if auction.lots and any([len(bid['lotValues']) != len(auction_bids_lots_ids.get(bid['id'], [])) for bid in bids]):
-            request.errors.add('body', 'bids', [{u'lotValues': [u'Number of lots of auction results did not match the number of auction lots']}])
-            request.errors.status = 422
-            return
-        if auction.lots and any([set([j['relatedLot'] for j in bid['lotValues']]) != set(auction_bids_lots_ids[bid['id']]) for bid in bids]):
-            request.errors.add('body', 'bids', [{u'lotValues': [{u'relatedLot': ['relatedLot should be one of lots of bid']}]}])
-            request.errors.status = 422
-            return
-        for bid in data['bids']:
-            if 'lotValues' in bid:
-                bid['lotValues'] = [
-                    x if x['relatedLot'] == lot_id else {}
-                    for (y, x) in sorted(zip([auction_bids_lots_ids[bid['id']].index(i['relatedLot']) for i in bid['lotValues']], bid['lotValues']))
-                ]
+        if auction.lots:
+            for index, bid in enumerate(bids):
+                if (getattr(auction.bids[index], 'status', 'active') or 'active') == 'active':
+                    if len(bid.get('lotValues', [])) != len(auction.bids[index].lotValues):
+                        request.errors.add('body', 'bids', [{u'lotValues': [u'Number of lots of auction results did not match the number of auction lots']}])
+                        request.errors.status = 422
+                        return
+                    for lot_index, lotValue in enumerate(auction.bids[index].lotValues):
+                        if lotValue.relatedLot != bid.get('lotValues', [])[lot_index].get('relatedLot', None):
+                            request.errors.add('body', 'bids', [{u'lotValues': [{u'relatedLot': ['relatedLot should be one of lots of bid']}]}])
+                            request.errors.status = 422
+                            return
+            for bid_index, bid in enumerate(data['bids']):
+                if 'lotValues' in bid:
+                    bid['lotValues'] = [
+                        x if x['relatedLot'] == lot_id and (getattr(auction.bids[bid_index].lotValues[lotValue_index], 'status', 'active') or 'active') == 'active' else {}
+                        for lotValue_index, x in enumerate(bid['lotValues'])
+                    ]
+
     else:
         data = {}
     if request.method == 'POST':
@@ -85,70 +115,109 @@ def validate_auction_auction_data(request):
 
 
 def validate_bid_data(request):
+    if not request.check_accreditation(request.auction.edit_accreditation):
+        request.errors.add('procurementMethodType', 'accreditation', 'Broker Accreditation level does not permit bid creation')
+        request.errors.status = 403
+        return
+    if request.auction.get('mode', None) is None and request.check_accreditation('t'):
+        request.errors.add('procurementMethodType', 'mode', 'Broker Accreditation level does not permit bid creation')
+        request.errors.status = 403
+        return
     update_logging_context(request, {'bid_id': '__new__'})
-    return validate_data(request, Bid)
+    model = type(request.auction).bids.model_class
+    return validate_data(request, model)
 
 
 def validate_patch_bid_data(request):
-    return validate_data(request, Bid, True)
+    model = type(request.auction).bids.model_class
+    return validate_data(request, model, True)
 
 
 def validate_award_data(request):
     update_logging_context(request, {'award_id': '__new__'})
-    return validate_data(request, Award)
+    model = type(request.auction).awards.model_class
+    return validate_data(request, model)
 
 
 def validate_patch_award_data(request):
-    return validate_data(request, Award, True)
+    model = type(request.auction).awards.model_class
+    return validate_data(request, model, True)
 
 
 def validate_patch_document_data(request):
-    return validate_data(request, Document, True)
+    model = type(request.context)
+    return validate_data(request, model, True)
 
 
 def validate_question_data(request):
+    if not request.check_accreditation(request.auction.edit_accreditation):
+        request.errors.add('procurementMethodType', 'accreditation', 'Broker Accreditation level does not permit question creation')
+        request.errors.status = 403
+        return
+    if request.auction.get('mode', None) is None and request.check_accreditation('t'):
+        request.errors.add('procurementMethodType', 'mode', 'Broker Accreditation level does not permit question creation')
+        request.errors.status = 403
+        return
     update_logging_context(request, {'question_id': '__new__'})
-    return validate_data(request, Question)
+    model = type(request.auction).questions.model_class
+    return validate_data(request, model)
 
 
 def validate_patch_question_data(request):
-    return validate_data(request, Question, True)
+    model = type(request.auction).questions.model_class
+    return validate_data(request, model, True)
 
 
 def validate_complaint_data(request):
+    if not request.check_accreditation(request.auction.edit_accreditation):
+        request.errors.add('procurementMethodType', 'accreditation', 'Broker Accreditation level does not permit complaint creation')
+        request.errors.status = 403
+        return
+    if request.auction.get('mode', None) is None and request.check_accreditation('t'):
+        request.errors.add('procurementMethodType', 'mode', 'Broker Accreditation level does not permit complaint creation')
+        request.errors.status = 403
+        return
     update_logging_context(request, {'complaint_id': '__new__'})
-    return validate_data(request, Complaint)
+    model = type(request.auction).complaints.model_class
+    return validate_data(request, model)
 
 
 def validate_patch_complaint_data(request):
-    return validate_data(request, Complaint, True)
+    model = type(request.auction).complaints.model_class
+    return validate_data(request, model, True)
 
 
 def validate_cancellation_data(request):
     update_logging_context(request, {'cancellation_id': '__new__'})
-    return validate_data(request, Cancellation)
+    model = type(request.auction).cancellations.model_class
+    return validate_data(request, model)
 
 
 def validate_patch_cancellation_data(request):
-    return validate_data(request, Cancellation, True)
+    model = type(request.auction).cancellations.model_class
+    return validate_data(request, model, True)
 
 
 def validate_contract_data(request):
     update_logging_context(request, {'contract_id': '__new__'})
-    return validate_data(request, Contract)
+    model = type(request.auction).contracts.model_class
+    return validate_data(request, model)
 
 
 def validate_patch_contract_data(request):
-    return validate_data(request, Contract, True)
+    model = type(request.auction).contracts.model_class
+    return validate_data(request, model, True)
 
 
 def validate_lot_data(request):
     update_logging_context(request, {'lot_id': '__new__'})
-    return validate_data(request, Lot)
+    model = type(request.auction).lots.model_class
+    return validate_data(request, model)
 
 
 def validate_patch_lot_data(request):
-    return validate_data(request, Lot, True)
+    model = type(request.auction).lots.model_class
+    return validate_data(request, model, True)
 
 
 def validate_file_upload(request):
