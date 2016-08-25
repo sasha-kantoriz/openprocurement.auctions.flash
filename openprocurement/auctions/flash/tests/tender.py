@@ -16,7 +16,7 @@ class AuctionTest(BaseWebTest):
     def test_simple_add_auction(self):
 
         u = Auction(test_auction_data)
-        u.auctionID = "UA-X"
+        u.auctionID = "UA-EA-X"
 
         assert u.id is None
         assert u.rev is None
