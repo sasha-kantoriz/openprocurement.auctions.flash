@@ -5,13 +5,13 @@ from openprocurement.api.utils import (
     context_unpack,
     APIResource,
 )
-from openprocurement.auctions.flash.utils import (
+from openprocurement.auctions.core.utils import (
     apply_patch,
     save_auction,
     opresource,
 
 )
-from openprocurement.auctions.flash.validation import (
+from openprocurement.auctions.core.validation import (
     validate_question_data,
     validate_patch_question_data,
 )

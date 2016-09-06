@@ -5,13 +5,13 @@ from openprocurement.api.utils import (
     cleanup_bids_for_cancelled_lots,
     APIResource,
 )
-from openprocurement.auctions.flash.utils import (
+from openprocurement.auctions.core.utils import (
     save_auction,
     apply_patch,
     add_next_award,
     opresource,
 )
-from openprocurement.auctions.flash.validation import (
+from openprocurement.auctions.core.validation import (
     validate_auction_auction_data,
 )
 

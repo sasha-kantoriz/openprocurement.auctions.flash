@@ -6,12 +6,12 @@ from openprocurement.api.utils import (
     APIResource,
     set_ownership,
 )
-from openprocurement.auctions.flash.utils import (
+from openprocurement.auctions.core.utils import (
     save_auction,
     apply_patch,
     opresource,
 )
-from openprocurement.auctions.flash.validation import (
+from openprocurement.auctions.core.validation import (
     validate_bid_data,
     validate_patch_bid_data,
 )
