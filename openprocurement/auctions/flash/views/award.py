@@ -6,13 +6,13 @@ from openprocurement.api.utils import (
     APIResource,
     calculate_business_date,
 )
-from openprocurement.auctions.flash.utils import (
+from openprocurement.auctions.core.utils import (
     apply_patch,
     save_auction,
     add_next_award,
     opresource,
 )
-from openprocurement.auctions.flash.validation import (
+from openprocurement.auctions.core.validation import (
     validate_award_data,
     validate_patch_award_data,
 )

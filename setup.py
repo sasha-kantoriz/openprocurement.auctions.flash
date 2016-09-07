@@ -4,8 +4,8 @@ import os
 version = '0.1'
 
 entry_points = {
-    'openprocurement.api.plugins': [
-        'flash = openprocurement.auctions.flash:includeme'
+    'openprocurement.auctions.core.plugins': [
+        'auctions.flash = openprocurement.auctions.flash:includeme'
     ]
 }
 
@@ -31,6 +31,7 @@ setup(name='openprocurement.auctions.flash',
       install_requires=[
           'setuptools',
           'openprocurement.api',
+          'openprocurement.auctions.core',
       ],
       entry_points=entry_points,
       )
