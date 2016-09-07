@@ -5,7 +5,8 @@ python:
 services:
   - couchdb
 env:
-  - TZ=Europe/Kiev
+  global:
+    - TZ=Europe/Kiev
   matrix:
     - SANDBOX_MODE=
     - SANDBOX_MODE=True
