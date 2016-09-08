@@ -575,7 +575,7 @@ class AuctionDocumentWithDSResourceTest(AuctionDocumentResourceTest):
         self.assertEqual(doc_id, response.json["data"]["id"])
         self.assertEqual(u'укр.doc', response.json["data"]["title"])
 
-        self.set_status('active.auctioning')
+        self.set_status('active.tendering')
 
         response = self.app.post_json('/auctions/{}/documents'.format(self.auction_id),
             {'data': {
@@ -586,7 +586,7 @@ class AuctionDocumentWithDSResourceTest(AuctionDocumentResourceTest):
             }}, status=403)
         self.assertEqual(response.status, '403 Forbidden')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['errors'][0]["description"], "Can't add document in current (active.auctioning) auction status")
+        self.assertEqual(response.json['errors'][0]["description"], "Can't add document in current (active.tendering) auction status")
 
     def test_put_auction_document_json(self):
         response = self.app.post_json('/auctions/{}/documents'.format(self.auction_id),
@@ -696,7 +696,7 @@ class AuctionDocumentWithDSResourceTest(AuctionDocumentResourceTest):
         self.assertIn('KeyID=', response.location)
         self.assertNotIn('Expires=', response.location)
 
-        self.set_status('active.auctioning')
+        self.set_status('active.tendering')
 
         response = self.app.put_json('/auctions/{}/documents/{}'.format(self.auction_id, doc_id),
             {'data': {
@@ -707,7 +707,7 @@ class AuctionDocumentWithDSResourceTest(AuctionDocumentResourceTest):
             }}, status=403)
         self.assertEqual(response.status, '403 Forbidden')
         self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['errors'][0]["description"], "Can't update document in current (active.auctioning) auction status")
+        self.assertEqual(response.json['errors'][0]["description"], "Can't update document in current (active.tendering) auction status")
 
 
 def suite():
