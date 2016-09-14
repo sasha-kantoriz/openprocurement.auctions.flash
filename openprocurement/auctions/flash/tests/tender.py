@@ -33,6 +33,30 @@ class AuctionTest(BaseWebTest):
 
         u.delete_instance(self.db)
 
+    def test_create_role(self):
+        self.assertEqual(set(Auction._fields) - Auction.Options.roles['create'].fields, set([
+            'awardCriteriaDetails', 'awardCriteriaDetails_en', 'awardCriteriaDetails_ru',
+            'description', 'description_en', 'description_ru',
+            'eligibilityCriteria', 'eligibilityCriteria_en', 'eligibilityCriteria_ru',
+            'enquiryPeriod', 'features', 'guarantee', 'hasEnquiries', 'items', 'lots', 'minimalStep', 'mode',
+            'procurementMethodRationale', 'procurementMethodRationale_en', 'procurementMethodRationale_ru',
+            'procurementMethodType', 'procuringEntity',
+            'submissionMethodDetails', 'submissionMethodDetails_en', 'submissionMethodDetails_ru',
+            'tenderPeriod', 'title', 'title_en', 'title_ru', 'value',
+        ]))
+
+    def test_edit_role(self):
+        self.assertEqual(set(Auction._fields) - Auction.Options.roles['edit_active.enquiries'].fields, set([
+            'awardCriteriaDetails', 'awardCriteriaDetails_en', 'awardCriteriaDetails_ru',
+            'description', 'description_en', 'description_ru',
+            'eligibilityCriteria', 'eligibilityCriteria_en', 'eligibilityCriteria_ru',
+            'enquiryPeriod', 'features', 'guarantee', 'hasEnquiries', 'items', 'minimalStep',
+            'procurementMethodRationale', 'procurementMethodRationale_en', 'procurementMethodRationale_ru',
+            'procuringEntity',
+            'submissionMethodDetails', 'submissionMethodDetails_en', 'submissionMethodDetails_ru',
+            'tenderPeriod', 'title', 'title_en', 'title_ru', 'value',
+        ]))
+
 
 class AuctionResourceTest(BaseWebTest):
 
