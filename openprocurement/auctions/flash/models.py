@@ -61,7 +61,7 @@ def calc_auction_end_time(bids, start):
 def rounding_shouldStartAfter(start_after, auction, use_from=datetime(2016, 6, 1, tzinfo=TZ)):
     if (auction.enquiryPeriod and auction.enquiryPeriod.startDate or get_now()) > use_from and not (SANDBOX_MODE and auction.submissionMethodDetails and u'quick' in auction.submissionMethodDetails):
         midnigth = datetime.combine(start_after.date(), time(0, tzinfo=start_after.tzinfo))
-        if start_after >= midnigth:
+        if start_after > midnigth:
             start_after = midnigth + timedelta(1)
     return start_after
 
