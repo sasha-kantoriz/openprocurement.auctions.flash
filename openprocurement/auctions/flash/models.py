@@ -499,7 +499,7 @@ class Auction(SchematicsDocument, Model):
     procurementMethodRationale = StringType()  # Justification of procurement method, especially in the case of Limited tendering.
     procurementMethodRationale_en = StringType()
     procurementMethodRationale_ru = StringType()
-    awardCriteria = StringType(choices=['lowestCost', 'bestProposal', 'bestValueToGovernment', 'singleBidOnly'], default='lowestCost')  # Specify the selection criteria, by lowest cost,
+    awardCriteria = StringType(choices=['highestCost', 'bestProposal', 'bestValueToGovernment', 'singleBidOnly'], default='highestCost')  # Specify the selection criteria, by lowest cost,
     awardCriteriaDetails = StringType()  # Any detailed or further information on the selection criteria.
     awardCriteriaDetails_en = StringType()
     awardCriteriaDetails_ru = StringType()
