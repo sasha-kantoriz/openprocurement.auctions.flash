@@ -19,7 +19,7 @@ from openprocurement.auctions.core.validation import (
 )
 
 
-@opresource(name='Auction Complaints',
+@opresource(name='belowThreshold:Auction Complaints',
             collection_path='/auctions/{auction_id}/complaints',
             path='/auctions/{auction_id}/complaints/{complaint_id}',
             auctionsprocurementMethodType="belowThreshold",
@@ -48,7 +48,8 @@ class AuctionComplaintResource(APIResource):
             self.LOGGER.info('Created auction complaint {}'.format(complaint.id),
                         extra=context_unpack(self.request, {'MESSAGE_ID': 'auction_complaint_create'}, {'complaint_id': complaint.id}))
             self.request.response.status = 201
-            self.request.response.headers['Location'] = self.request.route_url('Auction Complaints', auction_id=auction.id, complaint_id=complaint.id)
+            route = self.request.matched_route.name.replace("collection_", "")
+            self.request.response.headers['Location'] = self.request.current_route_url(_route_name=route, complaint_id=complaint.id, _query={})
             return {
                 'data': complaint.serialize(auction.status),
                 'access': {

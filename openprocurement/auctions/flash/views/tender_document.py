@@ -19,7 +19,7 @@ from openprocurement.auctions.core.utils import (
 )
 
 
-@opresource(name='Auction Documents',
+@opresource(name='belowThreshold:Auction Documents',
             collection_path='/auctions/{auction_id}/documents',
             path='/auctions/{auction_id}/documents/{document_id}',
             auctionsprocurementMethodType="belowThreshold",
