@@ -26,8 +26,8 @@ from openprocurement.auctions.core.models import IAuction, get_auction
 
 STAND_STILL_TIME = timedelta(days=2)
 COMPLAINT_STAND_STILL_TIME = timedelta(days=3)
-BIDDER_TIME = timedelta(minutes=6)
-SERVICE_TIME = timedelta(minutes=9)
+BIDDER_TIME = timedelta(minutes=3 * 3)
+SERVICE_TIME = timedelta(minutes=3 * 5)
 AUCTION_STAND_STILL_TIME = timedelta(minutes=15)
 
 
