@@ -214,11 +214,23 @@ class LotValue(LotValue):
             raise ValidationError(u"relatedLot should be one of lots")
 
 
-view_bid_role = (blacklist('owner_token', 'owner') + schematics_default_role)
+view_bid_role = (blacklist('owner_token') + schematics_default_role)
 Administrator_bid_role = whitelist('tenderers')
 
 
 class Bid(Bid):
+
+    class Options:
+        roles = {
+            'embedded': view_bid_role,
+            'view': view_bid_role,
+            'auction_view': whitelist('value', 'lotValues', 'id', 'date', 'parameters', 'participationUrl', 'owner'),
+            'active.qualification': view_bid_role,
+            'active.awarded': view_bid_role,
+            'complete': view_bid_role,
+            'unsuccessful': view_bid_role,
+            'cancelled': view_bid_role,
+        }
 
     tenderers = ListType(ModelType(Organization), required=True, min_size=1, max_size=1)
     parameters = ListType(ModelType(Parameter), default=list(), validators=[validate_parameters_uniq])
@@ -287,6 +299,7 @@ class Question(Question):
             if data.get('questionOf') == 'item' and relatedItem not in [i.id for i in auction.items]:
                 raise ValidationError(u"relatedItem should be one of items")
 
+view_complaint_role = (blacklist('owner_token', 'owner') + schematics_default_role)
 
 class Complaint(BaseComplaint):
     class Options:
@@ -298,16 +311,16 @@ class Complaint(BaseComplaint):
             'answer': whitelist('resolution', 'resolutionType', 'status', 'tendererAction'),
             'action': whitelist('tendererAction'),
             'review': whitelist('decision', 'status'),
-            'view': view_bid_role,
-            'view_claim': (blacklist('author') + view_bid_role),
-            'active.enquiries': view_bid_role,
-            'active.tendering': view_bid_role,
-            'active.auction': view_bid_role,
-            'active.qualification': view_bid_role,
-            'active.awarded': view_bid_role,
-            'complete': view_bid_role,
-            'unsuccessful': view_bid_role,
-            'cancelled': view_bid_role,
+            'view': view_complaint_role,
+            'view_claim': (blacklist('author') + view_complaint_role),
+            'active.enquiries': view_complaint_role,
+            'active.tendering': view_complaint_role,
+            'active.auction': view_complaint_role,
+            'active.qualification': view_complaint_role,
+            'active.awarded': view_complaint_role,
+            'complete': view_complaint_role,
+            'unsuccessful': view_complaint_role,
+            'cancelled': view_complaint_role,
         }
     # system
     documents = ListType(ModelType(Document), default=list())
