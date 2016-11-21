@@ -54,6 +54,13 @@ class Guarantee(Model):
     currency = StringType(required=True, default=u'UAH', max_length=3, min_length=3)  # The currency in 3-letter ISO 4217 format.
 
 
+class AuctionPeriodEndRequired(PeriodEndRequired):
+
+    def validate_startDate(self, data, period):
+        if period and data.get('endDate') and data.get('endDate') < period:
+            raise ValidationError(u"period should begin before its end")
+
+
 def calc_auction_end_time(bids, start):
     return start + bids * BIDDER_TIME + SERVICE_TIME + AUCTION_STAND_STILL_TIME
 
@@ -520,8 +527,8 @@ class Auction(SchematicsDocument, Model):
     submissionMethodDetails = StringType()  # Any detailed or further information on the submission method.
     submissionMethodDetails_en = StringType()
     submissionMethodDetails_ru = StringType()
-    enquiryPeriod = ModelType(PeriodEndRequired, required=True)  # The period during which enquiries may be made and will be answered.
-    tenderPeriod = ModelType(PeriodEndRequired, required=True)  # The period when the auction is open for submissions. The end date is the closing date for auction submissions.
+    enquiryPeriod = ModelType(AuctionPeriodEndRequired, required=True)  # The period during which enquiries may be made and will be answered.
+    tenderPeriod = ModelType(AuctionPeriodEndRequired, required=True)  # The period when the auction is open for submissions. The end date is the closing date for auction submissions.
     hasEnquiries = BooleanType()  # A Yes/No field as to whether enquiries were part of auction process.
     eligibilityCriteria = StringType()  # A description of any eligibility criteria for potential suppliers.
     eligibilityCriteria_en = StringType()
