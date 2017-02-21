@@ -283,6 +283,7 @@ class AuctionAwardResourceTest(BaseAuctionWebTest):
             'status': 'claim'
         }})
         self.assertEqual(response.status, '201 Created')
+        self.assertNotIn('transfer_token', response.json['data'])
 
         response = self.app.post_json('{}/complaints'.format(new_award_location[-82:]), {'data': {
             'title': 'complaint title',
@@ -756,6 +757,7 @@ class AuctionAwardComplaintResourceTest(BaseAuctionWebTest):
         self.assertEqual(complaint['author']['name'], test_organization['name'])
         self.assertIn('id', complaint)
         self.assertIn(complaint['id'], response.headers['Location'])
+        self.assertNotIn('transfer_token', complaint)
 
         self.set_status('active.awarded')
 
@@ -984,6 +986,7 @@ class AuctionAwardComplaintResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data'], complaint)
+        self.assertNotIn('transfer_token', complaint)
 
         response = self.app.get('/auctions/{}/awards/{}/complaints/some_id'.format(self.auction_id, self.award_id), status=404)
         self.assertEqual(response.status, '404 Not Found')

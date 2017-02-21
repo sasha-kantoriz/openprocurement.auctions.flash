@@ -138,6 +138,8 @@ class AuctionBidderResourceTest(BaseAuctionWebTest):
         self.assertEqual(bidder['tenderers'][0]['name'], test_organization['name'])
         self.assertIn('id', bidder)
         self.assertIn(bidder['id'], response.headers['Location'])
+        self.assertNotIn('transfer_token', bidder)
+
 
         self.assertEqual(self.db.get(self.auction_id).get('dateModified'), dateModified)
 
@@ -239,6 +241,7 @@ class AuctionBidderResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data'], bidder)
+        self.assertNotIn('transfer_token', bidder)
 
         self.set_status('active.qualification')
 

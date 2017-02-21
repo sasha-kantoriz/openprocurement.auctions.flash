@@ -632,12 +632,14 @@ class AuctionResourceTest(BaseWebTest):
         self.assertEqual(set(auction) - set(test_auction_data), set(
             [u'id', u'dateModified', u'auctionID', u'date', u'status', u'procurementMethod', u'awardCriteria', u'submissionMethod', u'next_check', u'owner']))
         self.assertIn(auction['id'], response.headers['Location'])
+        self.assertNotIn('transfer_token', auction)
 
         response = self.app.get('/auctions/{}'.format(auction['id']))
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(set(response.json['data']), set(auction))
         self.assertEqual(response.json['data'], auction)
+        self.assertNotIn('transfer_token', response.json['data'])
 
         response = self.app.post_json('/auctions?opt_jsonp=callback', {"data": test_auction_data})
         self.assertEqual(response.status, '201 Created')

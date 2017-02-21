@@ -122,6 +122,7 @@ class AuctionComplaintResourceTest(BaseAuctionWebTest):
         self.assertEqual(complaint['author']['name'], test_organization['name'])
         self.assertIn('id', complaint)
         self.assertIn(complaint['id'], response.headers['Location'])
+        self.assertNotIn('transfer_token', complaint)
 
         auction = self.db.get(self.auction_id)
         auction['status'] = 'active.awarded'
@@ -366,6 +367,7 @@ class AuctionComplaintResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.status, '200 OK')
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data'], complaint)
+        self.assertNotIn('transfer_token', complaint)
 
         response = self.app.get('/auctions/{}/complaints/some_id'.format(self.auction_id), status=404)
         self.assertEqual(response.status, '404 Not Found')
