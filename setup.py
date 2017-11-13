@@ -36,5 +36,10 @@ setup(name='openprocurement.auctions.flash',
           'openprocurement.api',
           'openprocurement.auctions.core',
       ],
+      package_data={
+          'openprocurement.auctions.flash': [
+              'cav.json'
+          ]
+      },
       entry_points=entry_points,
       )
