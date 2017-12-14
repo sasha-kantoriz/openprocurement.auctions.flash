@@ -1,52 +1,75 @@
 # -*- coding: utf-8 -*-
-import os
-from couchdb_schematics.document import SchematicsDocument
-from datetime import datetime, timedelta, time
-from iso8601 import parse_date, ParseError
-from pytz import timezone
+from datetime import (
+    datetime,
+    timedelta,
+    time
+)
 from pyramid.security import Allow
-from schematics.exceptions import ConversionError, ValidationError
-from schematics.models import Model as SchematicsModel
-from schematics.transforms import whitelist, blacklist, export_loop, convert
-from schematics.types import StringType, FloatType, IntType, URLType, BooleanType, BaseType, EmailType, MD5Type
-from schematics.types.compound import ModelType, DictType, ListType as BaseListType
+from couchdb_schematics.document import SchematicsDocument
+from schematics.exceptions import ValidationError
+from schematics.transforms import (
+    whitelist,
+    blacklist
+)
+from schematics.types import (
+    StringType,
+    FloatType,
+    IntType,
+    URLType,
+    BooleanType,
+    BaseType,
+    MD5Type
+)
+from schematics.types.compound import (
+    ModelType,
+    DictType,
+)
 from schematics.types.serializable import serializable
 from uuid import uuid4
 from barbecue import vnmax
-from zope.interface import implementer, Interface
+from zope.interface import implementer
 from openprocurement.api.models import (
-    IsoDateTimeType, ListType, Model, Value, PeriodEndRequired, SANDBOX_MODE,
-    Classification, validate_dkpp, Item, Document, Organization, Parameter, validate_parameters_uniq,
-    LotValue, Bid, Revision, Question,  Cancellation, Contract, Award, Feature,
-    Lot, schematics_embedded_role, schematics_default_role, ORA_CODES, WORKING_DAYS,
-    validate_features_uniq, validate_items_uniq, validate_lots_uniq, Period,
-    Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType,
+    IsoDateTimeType,
+    ListType,
+    Model,
+    Value,
+    PeriodEndRequired,
+    SANDBOX_MODE,
+    Organization,
+    Parameter,
+    validate_parameters_uniq,
+    LotValue,
+    Bid,
+    Revision,
+    Question,
+    Cancellation,
+    Contract,
+    Feature,
+    Lot,
+    schematics_embedded_role,
+    schematics_default_role,
+    validate_features_uniq,
+    validate_items_uniq,
+    validate_lots_uniq,
+    Period,
+    TZ,
+    get_now,
+    ComplaintModelType
 )
-from openprocurement.auctions.core.models import IAuction, get_auction
+from openprocurement.auctions.core.models import (
+    IAuction,
+    get_auction,
+    flashComplaint as Complaint,
+    flashItem as Item,
+    Document
+)
+from openprocurement.auctions.core.awarding_1_0.models import Award
 
 STAND_STILL_TIME = timedelta(days=2)
 COMPLAINT_STAND_STILL_TIME = timedelta(days=3)
 BIDDER_TIME = timedelta(minutes=3 * 3)
 SERVICE_TIME = timedelta(minutes=5 + 3 + 3)
 AUCTION_STAND_STILL_TIME = timedelta(minutes=15)
-
-
-def read_json(name):
-    import os.path
-    from json import loads
-    curr_dir = os.path.dirname(os.path.realpath(__file__))
-    file_path = os.path.join(curr_dir, name)
-    with open(file_path) as lang_file:
-        data = lang_file.read()
-    return loads(data)
-
-
-CAV_CODES = read_json('cav.json')
-
-
-class CAVClassification(Classification):
-    scheme = StringType(required=True, default=u'CAV', choices=[u'CAV'])
-    id = StringType(required=True, choices=CAV_CODES)
 
 
 class Guarantee(Model):
@@ -136,42 +159,6 @@ class Location(Model):
     latitude = BaseType(required=True)
     longitude = BaseType(required=True)
     elevation = BaseType()
-
-
-class Item(Item):
-    """A good, service, or work to be contracted."""
-    classification = ModelType(CAVClassification, required=True)
-    additionalClassifications = ListType(ModelType(Classification), default=list(), validators=[validate_dkpp]) # required=True, min_size=1,
-
-
-    def validate_relatedLot(self, data, relatedLot):
-        if relatedLot and isinstance(data['__parent__'], Model) and relatedLot not in [i.id for i in get_auction(data['__parent__']).lots]:
-            raise ValidationError(u"relatedLot should be one of lots")
-
-
-class Document(Document):
-
-    documentType = StringType(choices=[
-        'auctionNotice', 'awardNotice', 'contractNotice',
-        'notice', 'biddingDocuments', 'technicalSpecifications',
-        'evaluationCriteria', 'clarifications', 'shortlistedFirms',
-        'riskProvisions', 'billOfQuantity', 'bidders', 'conflictOfInterest',
-        'debarments', 'evaluationReports', 'winningBid', 'complaints',
-        'contractSigned', 'contractArrangements', 'contractSchedule',
-        'contractAnnexe', 'contractGuarantees', 'subContract',
-        'eligibilityCriteria', 'contractProforma', 'commercialProposal',
-        'qualificationDocuments', 'eligibilityDocuments', 'tenderNotice',
-    ])
-
-    def validate_relatedItem(self, data, relatedItem):
-        if not relatedItem and data.get('documentOf') in ['item', 'lot']:
-            raise ValidationError(u'This field is required.')
-        if relatedItem and isinstance(data['__parent__'], Model):
-            auction = get_auction(data['__parent__'])
-            if data.get('documentOf') == 'lot' and relatedItem not in [i.id for i in auction.lots]:
-                raise ValidationError(u"relatedItem should be one of lots")
-            if data.get('documentOf') == 'item' and relatedItem not in [i.id for i in auction.items]:
-                raise ValidationError(u"relatedItem should be one of items")
 
 
 class ProcuringEntity(Organization):
@@ -306,64 +293,6 @@ class Question(Question):
             if data.get('questionOf') == 'item' and relatedItem not in [i.id for i in auction.items]:
                 raise ValidationError(u"relatedItem should be one of items")
 
-view_complaint_role = (blacklist('owner_token', 'owner') + schematics_default_role)
-
-class Complaint(BaseComplaint):
-    class Options:
-        roles = {
-            'create': whitelist('author', 'title', 'description', 'status', 'relatedLot'),
-            'draft': whitelist('author', 'title', 'description', 'status'),
-            'cancellation': whitelist('cancellationReason', 'status'),
-            'satisfy': whitelist('satisfied', 'status'),
-            'answer': whitelist('resolution', 'resolutionType', 'status', 'tendererAction'),
-            'action': whitelist('tendererAction'),
-            'review': whitelist('decision', 'status'),
-            'view': view_complaint_role,
-            'view_claim': (blacklist('author') + view_complaint_role),
-            'active.enquiries': view_complaint_role,
-            'active.tendering': view_complaint_role,
-            'active.auction': view_complaint_role,
-            'active.qualification': view_complaint_role,
-            'active.awarded': view_complaint_role,
-            'complete': view_complaint_role,
-            'unsuccessful': view_complaint_role,
-            'cancelled': view_complaint_role,
-        }
-    # system
-    documents = ListType(ModelType(Document), default=list())
-
-
-    def serialize(self, role=None, context=None):
-        if role == 'view' and self.type == 'claim' and get_auction(self).status in ['active.enquiries', 'active.tendering']:
-            role = 'view_claim'
-        return super(BaseComplaint, self).serialize(role=role, context=context)
-
-    def get_role(self):
-        root = self.__parent__
-        while root.__parent__ is not None:
-            root = root.__parent__
-        request = root.request
-        data = request.json_body['data']
-        if request.authenticated_role == 'complaint_owner' and data.get('status', self.status) == 'cancelled':
-            role = 'cancellation'
-        elif request.authenticated_role == 'complaint_owner' and self.status == 'draft':
-            role = 'draft'
-        elif request.authenticated_role == 'auction_owner' and self.status == 'claim':
-            role = 'answer'
-        elif request.authenticated_role == 'auction_owner' and self.status == 'pending':
-            role = 'action'
-        elif request.authenticated_role == 'complaint_owner' and self.status == 'answered':
-            role = 'satisfy'
-        elif request.authenticated_role == 'reviewers' and self.status == 'pending':
-            role = 'review'
-        else:
-            role = 'invalid'
-        return role
-
-    def validate_relatedLot(self, data, relatedLot):
-        if relatedLot and isinstance(data['__parent__'], Model) and relatedLot not in [i.id for i in get_auction(data['__parent__']).lots]:
-            raise ValidationError(u"relatedLot should be one of lots")
-
 
 class Cancellation(Cancellation):
 
@@ -390,32 +319,6 @@ class Contract(Contract):
     items = ListType(ModelType(Item))
     suppliers = ListType(ModelType(Organization), min_size=1, max_size=1)
     date = IsoDateTimeType()
-
-class Award(Award):
-    id = MD5Type(required=True, default=lambda: uuid4().hex)
-    bid_id = MD5Type(required=True)
-    lotID = MD5Type()
-    title = StringType()  # Award title
-    title_en = StringType()
-    title_ru = StringType()
-    description = StringType()  # Award description
-    description_en = StringType()
-    description_ru = StringType()
-    status = StringType(required=True, choices=['pending', 'unsuccessful', 'active', 'cancelled'], default='pending')
-    date = IsoDateTimeType(default=get_now)
-    value = ModelType(Value)
-    suppliers = ListType(ModelType(Organization), required=True, min_size=1, max_size=1)
-    items = ListType(ModelType(Item))
-    documents = ListType(ModelType(Document), default=list())
-    complaints = ListType(ModelType(Complaint), default=list())
-    complaintPeriod = ModelType(Period)
-
-    def validate_lotID(self, data, lotID):
-        if isinstance(data['__parent__'], Model):
-            if not lotID and data['__parent__'].lots:
-                raise ValidationError(u'This field is required.')
-            if lotID and lotID not in [i.id for i in data['__parent__'].lots]:
-                raise ValidationError(u"lotID should be one of lots")
 
 class FeatureValue(Model):
 
