@@ -32,7 +32,6 @@ class AuctionCancellationResource(APIResource):
         auction.status = 'cancelled'
 
     def cancel_lot(self, cancellation=None):
-
         if not cancellation:
             cancellation = self.context
         auction = self.request.validated['auction']

@@ -65,6 +65,7 @@ from openprocurement.auctions.core.models import (
 )
 from openprocurement.auctions.core.awarding_1_0.models import Award
 from openprocurement.auctions.core.awarding_1_0.utils import next_check_awarding
+from openprocurement.auctions.core.models import IAuction
 
 
 STAND_STILL_TIME = timedelta(days=2)
@@ -96,6 +97,9 @@ def rounding_shouldStartAfter(start_after, auction, use_from=datetime(2016, 6, 1
         if start_after > midnigth:
             start_after = midnigth + timedelta(1)
     return start_after
+
+class IAuctionFlash(IAuction):
+    "Test qqqqqqqqqqqq"
 
 
 class AuctionAuctionPeriod(Period):
