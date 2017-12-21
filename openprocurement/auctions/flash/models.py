@@ -22,8 +22,7 @@ from openprocurement.api.models import (
     validate_features_uniq, validate_items_uniq, validate_lots_uniq, Period,
     Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType,
 )
-from openprocurement.auctions.core.models import (IAuction, get_auction,
-                                                  auction_view_role)
+from openprocurement.auctions.core.models import IAuction, get_auction, auction_view_role
 
 STAND_STILL_TIME = timedelta(days=2)
 COMPLAINT_STAND_STILL_TIME = timedelta(days=3)
