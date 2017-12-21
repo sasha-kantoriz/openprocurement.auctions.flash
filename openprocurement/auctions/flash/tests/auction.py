@@ -4,10 +4,7 @@ from datetime import timedelta
 from copy import deepcopy
 from openprocurement.api.models import get_now, SANDBOX_MODE
 from openprocurement.auctions.flash.tests.base import (BaseAuctionWebTest,
-                                                       test_auction_data,
-                                                       test_features_auction_data,
-                                                       test_bids, test_lots,
-                                                       test_organization)
+    test_auction_data, test_features_auction_data, test_bids, test_lots, test_organization)
 
 
 class AuctionAuctionResourceTest(BaseAuctionWebTest):
