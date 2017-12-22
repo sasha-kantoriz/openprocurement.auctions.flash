@@ -98,9 +98,6 @@ def rounding_shouldStartAfter(start_after, auction, use_from=datetime(2016, 6, 1
             start_after = midnigth + timedelta(1)
     return start_after
 
-class IAuctionFlash(IAuction):
-    "Test qqqqqqqqqqqq"
-
 
 class AuctionAuctionPeriod(Period):
     """The auction period."""
