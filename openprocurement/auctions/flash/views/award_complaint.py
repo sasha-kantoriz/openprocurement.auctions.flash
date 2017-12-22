@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 from openprocurement.auctions.core.utils import opresource
-from openprocurement.auctions.core.awarding_1_0.views import (
+from openprocurement.auctions.core.plugins.awarding_1_0.views import (
     AuctionAwardComplaintResource as BaseAuctionAwardComplaintResource
 )
 
