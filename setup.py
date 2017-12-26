@@ -5,7 +5,7 @@ version = '1.0.6'
 
 entry_points = {
     'openprocurement.auctions.core.plugins': [
-        'auctions.flash = openprocurement.auctions.flash:includeme'
+        'auctions.flash = openprocurement.auctions.flash.includeme:includeme'
     ],
     'openprocurement.api.migrations': [
         'auctions.flash = openprocurement.auctions.flash.migration:migrate_data'

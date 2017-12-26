@@ -65,6 +65,7 @@ from openprocurement.auctions.core.models import (
 )
 from openprocurement.auctions.core.awarding_1_0.models import Award
 from openprocurement.auctions.core.awarding_1_0.utils import next_check_awarding
+from openprocurement.auctions.core.models import IAuction
 
 
 STAND_STILL_TIME = timedelta(days=2)
