@@ -6,6 +6,18 @@ from openprocurement.auctions.core.tests.base import snitch
 from openprocurement.auctions.flash.tests.base import (
     BaseAuctionWebTest, test_lots, test_bids, test_organization
 )
+from openprocurement.auctions.core.tests.blanks.chronograph_blanks import (
+    # AuctionSwitchAuctionResourceTest
+    switch_to_auction,
+    # AuctionSwitchUnsuccessfulResourceTest
+    switch_to_unsuccessful,
+    # AuctionComplaintSwitchResourceTest
+    switch_to_pending,
+    switch_to_complaint,
+    # AuctionAwardComplaintSwitchResourceTest
+    switch_to_pending_award,
+    switch_to_complaint_award,
+)
 from openprocurement.auctions.flash.tests.blanks.chronograph_blanks import (
     # AuctionSwitchtenderingResourceTest
     switch_to_tendering_by_enquiryPeriod_endDate,
@@ -13,19 +25,9 @@ from openprocurement.auctions.flash.tests.blanks.chronograph_blanks import (
     switch_to_tendering_auctionPeriod,
     # AuctionSwitchQualificationResourceTest
     switch_to_qualification,
-    # AuctionSwitchAuctionResourceTest
-    switch_to_auction,
-    # AuctionSwitchUnsuccessfulResourceTest
-    switch_to_unsuccessful,
     # AuctionAuctionPeriodResourceTest
     set_auction_period,
     reset_auction_period,
-    # AuctionComplaintSwitchResourceTest
-    switch_to_pending,
-    switch_to_complaint,
-    # AuctionAwardComplaintSwitchResourceTest
-    auction_award_complaint_switch_to_pending,
-    auction_award_complaint_switch_to_complaint,
 )
 
 
@@ -78,6 +80,8 @@ class AuctionLotAuctionPeriodResourceTest(AuctionAuctionPeriodResourceTest):
 
 
 class AuctionComplaintSwitchResourceTest(BaseAuctionWebTest):
+    initial_organization = test_organization
+
     test_switch_to_pending = snitch(switch_to_pending)
     test_switch_to_complaint = snitch(switch_to_complaint)
 
@@ -89,6 +93,7 @@ class AuctionLotComplaintSwitchResourceTest(AuctionComplaintSwitchResourceTest):
 class AuctionAwardComplaintSwitchResourceTest(BaseAuctionWebTest):
     initial_status = 'active.qualification'
     initial_bids = test_bids
+    initial_organization = test_organization
 
     def setUp(self):
         super(AuctionAwardComplaintSwitchResourceTest, self).setUp()
@@ -97,8 +102,9 @@ class AuctionAwardComplaintSwitchResourceTest(BaseAuctionWebTest):
             self.auction_id), {'data': {'suppliers': [test_organization], 'status': 'pending', 'bid_id': self.initial_bids[0]['id']}})
         award = response.json['data']
         self.award_id = award['id']
-    testauction_award_complaint_switch_to_pending = snitch(auction_award_complaint_switch_to_pending)
-    test_auction_award_complaint_switch_to_complaint = snitch(auction_award_complaint_switch_to_complaint)
+
+    test_auction_award_complaint_switch_to_pending = snitch(switch_to_pending_award)
+    test_auction_award_complaint_switch_to_complaint = snitch(switch_to_complaint_award)
 
 
 class AuctionLotAwardComplaintSwitchResourceTest(AuctionAwardComplaintSwitchResourceTest):
