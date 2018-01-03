@@ -6,31 +6,25 @@ from openprocurement.auctions.core.tests.base import snitch
 from openprocurement.auctions.flash.tests.base import (
     BaseAuctionWebTest, test_auction_data, test_bids, test_lots, test_organization
 )
+from openprocurement.auctions.core.tests.contract import (
+    AuctionContractResourceTestMixin,
+    AuctionContractDocumentResourceTestMixin,
+    Auction2LotContractDocumentResourceTestMixin
+)
+from openprocurement.auctions.core.tests.blanks.contract_blanks import (
+    # Auction2LotContractResourceTest
+    patch_auction_contract_2_lots,
+)
 from openprocurement.auctions.flash.tests.blanks.contract_blanks import (
     # AuctionContractResourceTest
-    create_auction_contract_invalid,
-    create_auction_contract,
-    create_auction_contract_in_complete_status,
     patch_auction_contract,
-    get_auction_contract,
-    get_auction_contracts,
-    # Auction2LotContractResourceTest
-    patch_auction_2_lot_contract,
-    # AuctionContractDocumentResourceTest
-    auction_contract_document_not_found,
-    create_auction_contract_document,
-    put_auction_contract_document,
-    patch_auction_contract_document,
-    # Auction2LotContractDocumentResourceTest
-    create_auction_2_lot_contract_document,
-    put_auction_2_lot_contract_document,
-    patch_auction_2_lot_contract_document
 )
 
 
-class AuctionContractResourceTest(BaseAuctionWebTest):
+class AuctionContractResourceTest(BaseAuctionWebTest, AuctionContractResourceTestMixin):
     initial_status = 'active.qualification'
     initial_bids = test_bids
+    initial_organization = test_organization
 
     def setUp(self):
         super(AuctionContractResourceTest, self).setUp()
@@ -43,12 +37,8 @@ class AuctionContractResourceTest(BaseAuctionWebTest):
         self.award_suppliers = award['suppliers']
         self.award_items = award['items']
         response = self.app.patch_json('/auctions/{}/awards/{}'.format(self.auction_id, self.award_id), {"data": {"status": "active"}})
-    test_create_auction_contract_invalid = snitch(create_auction_contract_invalid)
-    test_create_auction_contract = snitch(create_auction_contract)
-    test_create_auction_contract_in_complete_status = snitch(create_auction_contract_in_complete_status)
+
     test_patch_auction_contract = snitch(patch_auction_contract)
-    test_get_auction_contract = snitch(get_auction_contract)
-    test_get_auction_contracts = snitch(get_auction_contracts)
 
 
 class Auction2LotContractResourceTest(BaseAuctionWebTest):
@@ -68,10 +58,11 @@ class Auction2LotContractResourceTest(BaseAuctionWebTest):
         award = response.json['data']
         self.award_id = award['id']
         self.app.patch_json('/auctions/{}/awards/{}'.format(self.auction_id, self.award_id), {"data": {"status": "active"}})
-    test_patch_auction_lots_contract = snitch(patch_auction_2_lot_contract)
+
+    test_patch_auction_lots_contract = snitch(patch_auction_contract_2_lots)
 
 
-class AuctionContractDocumentResourceTest(BaseAuctionWebTest):
+class AuctionContractDocumentResourceTest(BaseAuctionWebTest, AuctionContractDocumentResourceTestMixin):
     initial_status = 'active.qualification'
     initial_bids = test_bids
 
@@ -90,13 +81,9 @@ class AuctionContractDocumentResourceTest(BaseAuctionWebTest):
             'data': {'title': 'contract title', 'description': 'contract description', 'awardID': self.award_id}})
         contract = response.json['data']
         self.contract_id = contract['id']
-    test_auction_contract_document_not_found = snitch(auction_contract_document_not_found)
-    test_create_auction_contract_document = snitch(create_auction_contract_document)
-    test_put_auction_contract_document = snitch(put_auction_contract_document)
-    test_patch_auction_contract_document = snitch(patch_auction_contract_document)
 
 
-class Auction2LotContractDocumentResourceTest(BaseAuctionWebTest):
+class Auction2LotContractDocumentResourceTest(BaseAuctionWebTest, Auction2LotContractDocumentResourceTestMixin):
     initial_status = 'active.qualification'
     initial_bids = test_bids
     initial_lots = 2 * test_lots
@@ -117,9 +104,6 @@ class Auction2LotContractDocumentResourceTest(BaseAuctionWebTest):
         response = self.app.post_json('/auctions/{}/contracts'.format(self.auction_id), {'data': {'title': 'contract title', 'description': 'contract description', 'awardID': self.award_id}})
         contract = response.json['data']
         self.contract_id = contract['id']
-    test_create_auction_lots_contract_document = snitch(create_auction_2_lot_contract_document)
-    test_put_auction_lots_contract_document = snitch(put_auction_2_lot_contract_document)
-    test_patch_auction_lots_contract_document = snitch(patch_auction_2_lot_contract_document)
 
 
 def suite():
