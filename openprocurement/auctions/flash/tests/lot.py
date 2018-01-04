@@ -2,21 +2,8 @@
 import unittest
 
 from openprocurement.auctions.core.tests.base import snitch
-
-from openprocurement.auctions.flash.tests.base import (
-    BaseWebTest, BaseAuctionWebTest, test_lots
-)
-from openprocurement.auctions.flash.tests.blanks.lot_blanks import (
-    # AuctionLotResourceTest
-    create_auction_lot_invalid,
-    create_auction_lot,
-    patch_auction_lot,
-    patch_auction_currency,
-    patch_auction_vat,
-    get_auction_lot,
-    get_auction_lots,
-    delete_auction_lot,
-    auction_lot_guarantee,
+from openprocurement.auctions.core.tests.lot import AuctionLotResourceTestMixin, AuctionLotProcessTestMixin
+from openprocurement.auctions.core.tests.blanks.lot_blanks import (
     # AuctionLotFeatureResourceTest
     auction_value,
     auction_features_invalid,
@@ -24,40 +11,30 @@ from openprocurement.auctions.flash.tests.blanks.lot_blanks import (
     create_auction_bidder_invalid,
     patch_auction_bidder,
     # AuctionLotFeatureBidderResourceTest
-    create_auction_lot_bidder_invalid,
-    create_auction_bidder,
-    # AuctionLotProcessTest
-    auction_1lot_0bid,
-    auction_1lot_1bid,
-    auction_1lot_2bid,
-    auction_2lot_0bid,
-    auction_2lot_2can,
-    auction_2lot_2bid_0com_1can_before_auction,
-    auction_2lot_1bid_0com_1can,
-    auction_2lot_1bid_2com_1win,
-    auction_2lot_1bid_0com_0win,
-    auction_2lot_1bid_1com_1win,
-    auction_2lot_2bid_2com_2win,
-    auction_2lot_1feature_2bid_2com_2win
+    create_auction_bidder_invalid_feature,
+    create_auction_bidder_feature
+)
+
+from openprocurement.auctions.flash.tests.base import (
+    BaseWebTest, BaseAuctionWebTest, test_lots, test_auction_data, test_organization
+)
+from openprocurement.auctions.flash.tests.blanks.lot_blanks import (
+    # AuctionLotResourceTest
+    patch_auction_currency
 )
 
 
-class AuctionLotResourceTest(BaseAuctionWebTest):
-    test_create_auction_lot_invalid = snitch(create_auction_lot_invalid)
-    test_create_auction_lot = snitch(create_auction_lot)
-    test_patch_auction_lot = snitch(patch_auction_lot)
+class AuctionLotResourceTest(BaseAuctionWebTest, AuctionLotResourceTestMixin):
+    test_lots = test_lots
+    test_auction_data = test_auction_data
 
     test_patch_auction_currency = snitch(patch_auction_currency)
-    test_patch_auction_vat = snitch(patch_auction_vat)
-    test_get_auction_lot = snitch(get_auction_lot)
-
-    test_get_auction_lots = snitch(get_auction_lots)
-    test_delete_auction_lot = snitch(delete_auction_lot)
-    test_auction_lot_guarantee = snitch(auction_lot_guarantee)
 
 
 class AuctionLotFeatureResourceTest(BaseAuctionWebTest):
     initial_lots = 2 * test_lots
+    test_auction_data = test_auction_data
+
     test_auction_value = snitch(auction_value)
     test_auction_features_invalid = snitch(auction_features_invalid)
 
@@ -65,12 +42,15 @@ class AuctionLotFeatureResourceTest(BaseAuctionWebTest):
 class AuctionLotBidderResourceTest(BaseAuctionWebTest):
     initial_status = 'active.tendering'
     initial_lots = test_lots
+    initial_organization = test_organization
+
     test_create_auction_bidder_invalid = snitch(create_auction_bidder_invalid)
     test_patch_auction_bidder = snitch(patch_auction_bidder)
 
 
 class AuctionLotFeatureBidderResourceTest(BaseAuctionWebTest):
     initial_lots = test_lots
+    initial_organization = test_organization
 
     def setUp(self):
         super(AuctionLotFeatureBidderResourceTest, self).setUp()
@@ -136,28 +116,16 @@ class AuctionLotFeatureBidderResourceTest(BaseAuctionWebTest):
         self.assertEqual(response.content_type, 'application/json')
         self.assertEqual(response.json['data']['items'][0]['relatedLot'], self.lot_id)
         self.set_status('active.tendering')
-    test_create_auction_lot_bidder_invalid = snitch(create_auction_lot_bidder_invalid)
-    test_create_auction_bidder = snitch(create_auction_bidder)
+
+    create_auction_bidder_invalid_feature = snitch(create_auction_bidder_invalid_feature)
+    create_auction_bidder_feature = snitch(create_auction_bidder_feature)
 
 
-class AuctionLotProcessTest(BaseAuctionWebTest):
+class AuctionLotProcessTest(BaseAuctionWebTest, AuctionLotProcessTestMixin):
     setUp = BaseWebTest.setUp
-
-    test_auction_1lot_0bid = snitch(auction_1lot_0bid)
-    test_auction_1lot_1bid = snitch(auction_1lot_1bid)
-    test_auction_1lot_2bid = snitch(auction_1lot_2bid)
-
-    test_auction_2lot_0bid = snitch(auction_2lot_0bid)
-    test_auction_2lot_2can = snitch(auction_2lot_2can)
-    test_auction_2lot_2bid_0com_1can_before_auction = snitch(auction_2lot_2bid_0com_1can_before_auction)
-
-    test_auction_2lot_1bid_0com_1can = snitch(auction_2lot_1bid_0com_1can)
-    test_auction_2lot_1bid_2com_1win = snitch(auction_2lot_1bid_2com_1win)
-    test_auction_2lot_1bid_0com_0win = snitch(auction_2lot_1bid_0com_0win)
-
-    test_auction_2lot_1bid_1com_1win = snitch(auction_2lot_1bid_1com_1win)
-    test_auction_2lot_2bid_2com_2win = snitch(auction_2lot_2bid_2com_2win)
-    test_auction_2lot_1feature_2bid_2com_2win = snitch(auction_2lot_1feature_2bid_2com_2win)
+    initial_organization = test_organization
+    test_lots = test_lots
+    test_auction_data = test_auction_data
 
 
 def suite():
