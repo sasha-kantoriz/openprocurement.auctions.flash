@@ -60,7 +60,8 @@ class AuctionAuctionResourceTest(BaseAuctionWebTest):
         self.assertNotEqual(auction, self.initial_data)
         self.assertIn('dateModified', auction)
         self.assertIn('minimalStep', auction)
-        self.assertIn('submissionMethodDetails', auction)
+        if SANDBOX_MODE:
+            self.assertIn('submissionMethodDetails', auction)
         self.assertNotIn("procuringEntity", auction)
         self.assertNotIn("tenderers", auction["bids"][0])
         self.assertEqual(auction["bids"][0]['value']['amount'], self.initial_bids[0]['value']['amount'])
