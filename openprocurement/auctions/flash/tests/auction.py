@@ -1,9 +1,15 @@
 # -*- coding: utf-8 -*-
 import unittest
 from datetime import timedelta
-
-from openprocurement.api.models import get_now
-from openprocurement.auctions.flash.tests.base import BaseAuctionWebTest, test_auction_data, test_features_auction_data, test_bids, test_lots, test_organization
+from copy import deepcopy
+from openprocurement.api.models import get_now, SANDBOX_MODE
+from openprocurement.auctions.core.tests.base import snitch
+from openprocurement.auctions.core.tests.blanks.auction_blanks import (
+    submission_method_details_no_auction,
+    submission_method_details_fast_forward
+)
+from openprocurement.auctions.flash.tests.base import (BaseAuctionWebTest,
+    test_auction_data, test_features_auction_data, test_bids, test_lots, test_organization)
 
 
 class AuctionAuctionResourceTest(BaseAuctionWebTest):
@@ -54,6 +60,8 @@ class AuctionAuctionResourceTest(BaseAuctionWebTest):
         self.assertNotEqual(auction, self.initial_data)
         self.assertIn('dateModified', auction)
         self.assertIn('minimalStep', auction)
+        if SANDBOX_MODE:
+            self.assertIn('submissionMethodDetails', auction)
         self.assertNotIn("procuringEntity", auction)
         self.assertNotIn("tenderers", auction["bids"][0])
         self.assertEqual(auction["bids"][0]['value']['amount'], self.initial_bids[0]['value']['amount'])
@@ -1033,11 +1041,22 @@ class AuctionFeaturesAuctionResourceTest(BaseAuctionWebTest):
         self.assertIn('parameters', auction["bids"][0])
 
 
+@unittest.skipUnless(SANDBOX_MODE, u"Only in SANDBOX_MODE")
+class AuctionSubmissionMethodDetailsTest(BaseAuctionWebTest):
+    initial_data = deepcopy(test_auction_data)
+    initial_bids = test_bids
+    initial_status = 'active.auction'
+
+    test_submission_method_details_no_auction = snitch(submission_method_details_no_auction)
+    test_submission_method_details_fast_forward = snitch(submission_method_details_fast_forward)
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(AuctionAuctionResourceTest))
     suite.addTest(unittest.makeSuite(AuctionSameValueAuctionResourceTest))
     suite.addTest(unittest.makeSuite(AuctionFeaturesAuctionResourceTest))
+    suite.addTest(unittest.makeSuite(AuctionSubmissionMethodDetailsTest))
     return suite
 
 

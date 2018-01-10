@@ -22,7 +22,7 @@ from openprocurement.api.models import (
     validate_features_uniq, validate_items_uniq, validate_lots_uniq, Period,
     Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType,
 )
-from openprocurement.auctions.core.models import IAuction, get_auction
+from openprocurement.auctions.core.models import IAuction, get_auction, auction_view_role
 
 STAND_STILL_TIME = timedelta(days=2)
 COMPLAINT_STAND_STILL_TIME = timedelta(days=3)
@@ -450,7 +450,6 @@ draft_role = whitelist('status')
 edit_role = (blacklist('status', 'procurementMethodType', 'lots', 'owner_token', 'owner', '_attachments', 'revisions', 'date', 'dateModified', 'doc_id', 'auctionID', 'bids', 'documents', 'awards', 'questions', 'complaints', 'auctionUrl', 'auctionPeriod', 'awardPeriod', 'procurementMethod', 'awardCriteria', 'submissionMethod', 'mode', 'cancellations', 'numberOfBidders', 'contracts') + schematics_embedded_role)
 view_role = (blacklist('owner_token', '_attachments', 'revisions') + schematics_embedded_role)
 listing_role = whitelist('dateModified', 'doc_id')
-auction_view_role = whitelist('auctionID', 'dateModified', 'bids', 'auctionPeriod', 'minimalStep', 'auctionUrl', 'features', 'lots', 'items', 'procurementMethodType')
 auction_post_role = whitelist('bids')
 auction_patch_role = whitelist('auctionUrl', 'bids', 'lots')
 enquiries_role = (blacklist('owner_token', '_attachments', 'revisions', 'bids', 'numberOfBids') + schematics_embedded_role)
