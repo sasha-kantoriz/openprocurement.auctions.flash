@@ -90,6 +90,7 @@ test_auction_data = {
 }
 if SANDBOX_MODE:
     test_auction_data['procurementMethodDetails'] = 'quick, accelerator=1440'
+    test_auction_data['submissionMethodDetails'] = 'test submissionMethodDetails'
 test_features_auction_data = test_auction_data.copy()
 test_features_item = test_features_auction_data['items'][0].copy()
 test_features_item['id'] = "1"
