@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 import unittest
 from datetime import timedelta
-
-from openprocurement.api.models import get_now
-from openprocurement.auctions.flash.tests.base import BaseAuctionWebTest, test_auction_data, test_features_auction_data, test_bids, test_lots, test_organization
+from copy import deepcopy
+from openprocurement.api.models import get_now, SANDBOX_MODE
+from openprocurement.auctions.flash.tests.base import (BaseAuctionWebTest,
+    test_auction_data, test_features_auction_data, test_bids, test_lots, test_organization)
 
 
 class AuctionAuctionResourceTest(BaseAuctionWebTest):
@@ -1033,11 +1034,34 @@ class AuctionFeaturesAuctionResourceTest(BaseAuctionWebTest):
         self.assertIn('parameters', auction["bids"][0])
 
 
+class TestSubmissionMethodDetailsField(BaseAuctionWebTest):
+    initial_data = deepcopy(test_auction_data)
+    initial_bids = test_bids
+    initial_status = 'active.auction'
+
+    def test_submission_method_details_get(self):
+        self.initial_data['submissionMethodDetails'] = 'test'
+        self.create_auction()
+        response = self.app.get('/auctions/{}/auction'.format(self.auction_id))
+        self.assertEqual('test', response.json['data']['submissionMethodDetails'])
+
+    @unittest.skipIf(SANDBOX_MODE==False, u"Only in SANDBOX_MODE")
+    def test_submission_method_details_result(self):
+        self.initial_data['submissionMethodDetails'] = u'quick(mode:no-auction)'
+        self.create_auction()
+        self.app.authorization = ('Basic', ('auction', ''))
+        result = self.app.post_json('/auctions/{}/auction'.format(self.auction_id),
+                                    {'data': {'bids': self.initial_bids}})
+        self.assertEqual(result['auctionPeriod']['startDate'],
+                         result['auctionPeriod']['endDate'])
+
+
 def suite():
     suite = unittest.TestSuite()
     suite.addTest(unittest.makeSuite(AuctionAuctionResourceTest))
     suite.addTest(unittest.makeSuite(AuctionSameValueAuctionResourceTest))
     suite.addTest(unittest.makeSuite(AuctionFeaturesAuctionResourceTest))
+    suite.addTest(unittest.makeSuite(TestSubmissionMethodDetailsField))
     return suite
 
 
