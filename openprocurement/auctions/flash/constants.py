@@ -2,6 +2,6 @@
 
 VIEW_LOCATIONS = [
     "openprocurement.auctions.flash.views",
-    "openprocurement.auctions.core.plugins.contracting.flash.views",
+    "openprocurement.auctions.core.plugins",
 ]
 

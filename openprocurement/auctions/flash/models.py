@@ -43,7 +43,6 @@ from openprocurement.api.models import (
     Revision,
     Question,
     Cancellation,
-    Contract,
     Feature,
     Lot,
     schematics_embedded_role,
@@ -63,8 +62,15 @@ from openprocurement.auctions.core.models import (
     flashItem as Item,
     Document
 )
-from openprocurement.auctions.core.plugins.awarding_1_0.models import Award
-from openprocurement.auctions.core.plugins.awarding_1_0.utils import next_check_awarding
+from openprocurement.auctions.core.plugins.awarding_1_0.models import (
+    Award
+)
+from openprocurement.auctions.core.plugins.awarding_1_0.utils import (
+    next_check_awarding
+)
+from openprocurement.auctions.core.plugins.contracting.flash.models import (
+    Contract
+)
 
 
 STAND_STILL_TIME = timedelta(days=2)
@@ -300,27 +306,6 @@ class Cancellation(Cancellation):
 
     documents = ListType(ModelType(Document), default=list())
 
-
-class Contract(Contract):
-
-    documents = ListType(ModelType(Document), default=list())
-    id = MD5Type(required=True, default=lambda: uuid4().hex)
-    awardID = StringType(required=True)
-    contractID = StringType()
-    contractNumber = StringType()
-    title = StringType()  # Contract title
-    title_en = StringType()
-    title_ru = StringType()
-    description = StringType()  # Contract description
-    description_en = StringType()
-    description_ru = StringType()
-    status = StringType(choices=['pending', 'terminated', 'active', 'cancelled'], default='pending')
-    period = ModelType(Period)
-    value = ModelType(Value)
-    dateSigned = IsoDateTimeType()
-    items = ListType(ModelType(Item))
-    suppliers = ListType(ModelType(Organization), min_size=1, max_size=1)
-    date = IsoDateTimeType()
 
 class FeatureValue(Model):
 
