@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 from openprocurement.auctions.core.adapters import AuctionConfigurator
 from openprocurement.auctions.flash.models import Auction
-from openprocurement.auctions.core.plugins.awarding_1_0.utils import add_next_award
-from openprocurement.auctions.core.plugins.awarding_1_0.models import Award
+from openprocurement.auctions.core.plugins.awarding.v1.utils import add_next_award
+from openprocurement.auctions.core.plugins.awarding.v1.models import Award
 
 
 class AuctionFlashConfigurator(AuctionConfigurator):

@@ -62,13 +62,13 @@ from openprocurement.auctions.core.models import (
     flashItem as Item,
     Document
 )
-from openprocurement.auctions.core.plugins.awarding_1_0.models import (
+from openprocurement.auctions.core.plugins.awarding.v1.models import (
     Award
 )
-from openprocurement.auctions.core.plugins.awarding_1_0.utils import (
+from openprocurement.auctions.core.plugins.awarding.v1.utils import (
     next_check_awarding
 )
-from openprocurement.auctions.core.plugins.contracting.flash.models import (
+from openprocurement.auctions.core.plugins.contracting.v1.models import (
     Contract
 )
 
