@@ -78,6 +78,8 @@ class AuctionBidderDocumentWithDSResourceTest(BaseAuctionWebTest,
         self.bid_token = response.json['access']['token']
     docservice = True
 
+    test_create_auction_bidder_document_nopending = snitch(create_auction_bidder_document_nopending)
+
 
 def suite():
     suite = unittest.TestSuite()
