@@ -351,7 +351,11 @@ chronograph_view_role = whitelist('status', 'enquiryPeriod', 'tenderPeriod', 'au
 Administrator_role = whitelist('status', 'mode', 'procuringEntity','auctionPeriod', 'lots')
 
 
-@implementer(IAuction)
+class IFlashAuction(IAuction):
+    """Marker interface for Flash auctions"""
+
+
+@implementer(IFlashAuction)
 class Auction(SchematicsDocument, Model):
     """Data regarding auction process - publicly inviting prospective contractors to submit bids for evaluation and selecting a winner or winners."""
     class Options:
