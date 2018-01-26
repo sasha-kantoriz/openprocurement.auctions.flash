@@ -17,15 +17,13 @@ from schematics.types import (
     IntType,
     URLType,
     BooleanType,
-    BaseType,
-    MD5Type
+    BaseType
 )
 from schematics.types.compound import (
     ModelType,
     DictType,
 )
 from schematics.types.serializable import serializable
-from uuid import uuid4
 from barbecue import vnmax
 from zope.interface import implementer
 from openprocurement.api.models import (
@@ -55,6 +53,12 @@ from openprocurement.api.models import (
     get_now,
     ComplaintModelType
 )
+from openprocurement.api.interfaces import (
+    IAwardingNextCheck
+)
+from openprocurement.api.utils import (
+    get_request_from_root
+)
 from openprocurement.auctions.core.models import (
     IAuction,
     get_auction,
@@ -64,9 +68,6 @@ from openprocurement.auctions.core.models import (
 )
 from openprocurement.auctions.core.plugins.awarding.v1.models import (
     Award
-)
-from openprocurement.auctions.core.plugins.awarding.v1.utils import (
-    next_check_awarding
 )
 from openprocurement.auctions.core.plugins.contracting.v1.models import (
     Contract
@@ -534,7 +535,12 @@ class Auction(SchematicsDocument, Model):
                     checks.append(lot.auctionPeriod.startDate.astimezone(TZ))
                 elif now < calc_auction_end_time(lot.numberOfBids, lot.auctionPeriod.startDate).astimezone(TZ):
                     checks.append(calc_auction_end_time(lot.numberOfBids, lot.auctionPeriod.startDate).astimezone(TZ))
-        checks = next_check_awarding(self, checks)  # Use next_chek part from awarding 1.0
+        # Use next_check part from awarding 1.0
+        request = get_request_from_root(self)
+        if request is not None:
+            awarding_check = request.registry.getAdapter(self, IAwardingNextCheck).add_awarding_checks(self)
+            if awarding_check is not None:
+                checks.append(awarding_check)  
         if self.status.startswith('active'):
             from openprocurement.api.utils import calculate_business_date
             for complaint in self.complaints:
