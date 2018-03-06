@@ -14,7 +14,7 @@ from openprocurement.auctions.core.tests.blanks.auction_blanks import (
     post_auction_auction_not_changed,
     post_auction_auction_reversed,
     # AuctionFeaturesAuctionResourceTest
-    get_auction_features_auction
+    get_auction_features_auction,
     submission_method_details_no_auction,
     submission_method_details_fast_forward
 )

@@ -16,7 +16,7 @@ from barbecue import vnmax
 from zope.interface import implementer, Interface
 from openprocurement.api.models import (
     IsoDateTimeType, ListType, Model, Value, PeriodEndRequired, SANDBOX_MODE,
-    Classification, validate_dkpp, Item, Document, Organization, Parameter, validate_parameters_uniq,
+    Classification, validate_dkpp, Document, Organization, Parameter, validate_parameters_uniq,
     LotValue, Bid, Revision, Question,  Cancellation, Contract, Award, Feature,
     Lot, schematics_embedded_role, schematics_default_role, ORA_CODES, WORKING_DAYS,
     validate_features_uniq, validate_items_uniq, validate_lots_uniq, Period,
@@ -60,13 +60,6 @@ def read_json(name):
         data = lang_file.read()
     return loads(data)
 
-
-CAV_CODES = read_json('cav.json')
-
-
-class CAVClassification(Classification):
-    scheme = StringType(required=True, default=u'CAV', choices=[u'CAV'])
-    id = StringType(required=True, choices=CAV_CODES)
 
 
 class Guarantee(Model):
@@ -156,17 +149,6 @@ class Location(Model):
     latitude = BaseType(required=True)
     longitude = BaseType(required=True)
     elevation = BaseType()
-
-
-class Item(Item):
-    """A good, service, or work to be contracted."""
-    classification = ModelType(CAVClassification, required=True)
-    additionalClassifications = ListType(ModelType(Classification), default=list(), validators=[validate_dkpp]) # required=True, min_size=1,
-
-
-    def validate_relatedLot(self, data, relatedLot):
-        if relatedLot and isinstance(data['__parent__'], Model) and relatedLot not in [i.id for i in get_auction(data['__parent__']).lots]:
-            raise ValidationError(u"relatedLot should be one of lots")
 
 
 class Document(Document):
@@ -674,3 +656,5 @@ class Auction(SchematicsDocument, Model):
     def validate_lots(self, data, value):
         if len(set([lot.guarantee.currency for lot in value if lot.guarantee])) > 1:
             raise ValidationError(u"lot guarantee currency should be identical to auction guarantee currency")
+
+FlashAuction = Auction

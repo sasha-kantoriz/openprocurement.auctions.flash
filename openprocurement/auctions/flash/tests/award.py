@@ -148,16 +148,6 @@ class Auction2LotAwardComplaintResourceTest(BaseAuctionWebTest,
     test_get_auction_lot_award_complaint = snitch(get_auction_award_complaint)
     test_get_auction_lot_award_complaints = snitch(get_auction_award_complaints)
 
-        response = self.app.patch_json('/auctions/{}/awards/{}/complaints/{}?acc_token={}'.format(self.auction_id, self.award_id, complaint['id'], self.auction_token), {"data": {
-            "status": "answered",
-            "resolutionType": "invalid",
-            "resolution": "spam 100% " * 3
-        }})
-        self.assertEqual(response.status, '200 OK')
-        self.assertEqual(response.content_type, 'application/json')
-        self.assertEqual(response.json['data']["status"], "answered")
-        self.assertEqual(response.json['data']["resolutionType"], "invalid")
-        self.assertEqual(response.json['data']["resolution"], "spam 100% " * 3)
 
 class AuctionAwardComplaintDocumentResourceTest(BaseAuctionWebTest,
                                                 AuctionAwardComplaintDocumentResourceTestMixin):
