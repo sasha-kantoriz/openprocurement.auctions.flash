@@ -19,9 +19,16 @@ from openprocurement.auctions.flash.tests.blanks.contract_blanks import (
     # AuctionContractResourceTest
     patch_auction_contract,
 )
+from openprocurement.auctions.core.plugins.contracting.v1.tests.contract import (
+    AuctionContractV1ResourceTestCaseMixin
+)
 
 
-class AuctionContractResourceTest(BaseAuctionWebTest, AuctionContractResourceTestMixin):
+class AuctionContractResourceTest(
+    BaseAuctionWebTest,
+    AuctionContractResourceTestMixin,
+     AuctionContractV1ResourceTestCaseMixin
+):
     initial_status = 'active.qualification'
     initial_bids = test_bids
     initial_organization = test_organization
