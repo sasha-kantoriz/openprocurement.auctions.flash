@@ -270,8 +270,9 @@ def create_auction_generated(self):
     self.assertEqual(response.status, '201 Created')
     self.assertEqual(response.content_type, 'application/json')
     auction = response.json['data']
-    if 'procurementMethodDetails' in auction:
-        auction.pop('procurementMethodDetails')
+    for key in ['procurementMethodDetails', 'submissionMethodDetails']:
+        if key in auction:
+            auction.pop(key)
     self.assertEqual(set(auction), set([u'procurementMethodType', u'id', u'date', u'dateModified', u'auctionID', u'status', u'enquiryPeriod',
                                        u'tenderPeriod', u'minimalStep', u'items', u'value', u'procuringEntity', u'next_check',
                                        u'procurementMethod', u'awardCriteria', u'submissionMethod', u'title', u'owner']))
