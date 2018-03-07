@@ -38,6 +38,8 @@ setup(name='openprocurement.auctions.flash',
           'setuptools',
           'openprocurement.api',
           'openprocurement.auctions.core',
+          'openprocurement.schemas.dgf',
+          'schematics-flexible'
       ],
       entry_points=entry_points,
       )
