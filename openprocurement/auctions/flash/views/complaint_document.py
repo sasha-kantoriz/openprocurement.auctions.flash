@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from openprocurement.api.constants import STATUS4ROLE
 from openprocurement.api.utils import (
     get_file,
     upload_file,
@@ -12,6 +11,7 @@ from openprocurement.api.validation import (
     validate_patch_document_data,
 )
 
+from openprocurement.auctions.core.constants import STATUS4ROLE
 from openprocurement.auctions.core.utils import (
     save_auction,
     apply_patch,
