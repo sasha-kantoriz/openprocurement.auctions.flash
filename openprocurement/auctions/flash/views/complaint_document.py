@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+from openprocurement.api.constants import STATUS4ROLE
 from openprocurement.api.utils import (
     get_file,
     upload_file,
@@ -20,15 +21,6 @@ from openprocurement.auctions.core.validation import (
     validate_file_update,
     validate_file_upload,
 )
-
-
-
-
-STATUS4ROLE = {
-    'complaint_owner': ['draft', 'answered'],
-    'reviewers': ['pending'],
-    'auction_owner': ['claim'],
-}
 
 
 @opresource(name='belowThreshold:Auction Complaint Documents',
