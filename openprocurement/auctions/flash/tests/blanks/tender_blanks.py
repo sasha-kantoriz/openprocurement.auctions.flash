@@ -2,7 +2,8 @@
 from copy import deepcopy
 from datetime import timedelta
 
-from openprocurement.api.models import get_now, SANDBOX_MODE
+from openprocurement.api.models import get_now
+from openprocurement.api.constants import SANDBOX_MODE
 
 from openprocurement.auctions.flash.models import Auction
 from openprocurement.auctions.flash.tests.base import test_auction_data, test_organization
@@ -61,7 +62,7 @@ def create_auction_invalid(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
     self.assertEqual(response.json['errors'], [
-        {u'description': u'Expecting value: line 1 column 1 (char 0)',
+        {u'description': u'No JSON object could be decoded',
             u'location': u'body', u'name': u'data'}
     ])
 

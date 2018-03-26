@@ -2,13 +2,14 @@
 from openprocurement.api.utils import (
     json_view,
     context_unpack,
-    cleanup_bids_for_cancelled_lots,
-    APIResource,
+    APIResource
 )
+
 from openprocurement.auctions.core.utils import (
     save_auction,
     apply_patch,
-    opresource
+    opresource,
+    cleanup_bids_for_cancelled_lots
 )
 from openprocurement.auctions.core.validation import (
     validate_auction_auction_data,

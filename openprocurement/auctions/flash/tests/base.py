@@ -1,17 +1,16 @@
 # -*- coding: utf-8 -*-
-import unittest
-import webtest
 import os
+import webtest
+from base64 import b64encode
 from copy import deepcopy
 from datetime import datetime, timedelta
-from uuid import uuid4
 from requests.models import Response
-from base64 import b64encode
 from urllib import urlencode
+from uuid import uuid4
 
-from openprocurement.api.models import SANDBOX_MODE
-from openprocurement.api.utils import VERSION, SESSION, apply_data_patch
-from openprocurement.api.design import sync_design
+from openprocurement.api.constants import VERSION, SESSION, SANDBOX_MODE
+from openprocurement.api.utils import apply_data_patch
+
 from openprocurement.auctions.core.tests.base import BaseWebTest as CoreBaseWebTest
 
 
