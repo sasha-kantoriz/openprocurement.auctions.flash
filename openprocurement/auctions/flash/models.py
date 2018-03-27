@@ -4,11 +4,11 @@ from datetime import (
     timedelta,
     time
 )
-from pyramid.security import Allow
+
 from couchdb_schematics.document import SchematicsDocument
+from pyramid.security import Allow
 from schematics.exceptions import ValidationError
 from schematics.transforms import (
-    whitelist,
     blacklist
 )
 from schematics.types import (
@@ -24,25 +24,26 @@ from schematics.types.compound import (
     DictType,
 )
 from schematics.types.serializable import serializable
-from barbecue import vnmax
 from zope.interface import implementer
+
+from barbecue import vnmax
+
+from openprocurement.api.constants import (
+    SANDBOX_MODE,
+    AUCTIONS_COMPLAINT_STAND_STILL_TIME
+)
+from openprocurement.api.interfaces import (
+    IAwardingNextCheck
+)
 from openprocurement.api.models import (
     IsoDateTimeType,
     ListType,
     Model,
     Value,
     PeriodEndRequired,
-    SANDBOX_MODE,
-    Organization,
-    Parameter,
-    validate_parameters_uniq,
-    LotValue,
-    Bid,
     Revision,
-    Question,
     Cancellation,
     Feature,
-    Lot,
     schematics_embedded_role,
     schematics_default_role,
     validate_features_uniq,
@@ -53,12 +54,10 @@ from openprocurement.api.models import (
     get_now,
     ComplaintModelType
 )
-from openprocurement.api.interfaces import (
-    IAwardingNextCheck
-)
 from openprocurement.api.utils import (
     get_request_from_root
 )
+
 from openprocurement.auctions.core.models import (
     IAuction,
     get_auction,
@@ -68,8 +67,15 @@ from openprocurement.auctions.core.models import (
     flash_auction_roles,
     flash_bid_roles,
     calc_auction_end_time,
-    COMPLAINT_STAND_STILL_TIME
+    Parameter,
+    Organization,
+    validate_parameters_uniq,
+    LotValue,
+    Bid,
+    Question,
+    Lot,
 )
+
 from openprocurement.auctions.core.plugins.awarding.v1.models import (
     Award
 )
@@ -475,15 +481,15 @@ class Auction(SchematicsDocument, Model):
             from openprocurement.api.utils import calculate_business_date
             for complaint in self.complaints:
                 if complaint.status == 'claim' and complaint.dateSubmitted:
-                    checks.append(calculate_business_date(complaint.dateSubmitted, COMPLAINT_STAND_STILL_TIME, self))
+                    checks.append(calculate_business_date(complaint.dateSubmitted, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
                 elif complaint.status == 'answered' and complaint.dateAnswered:
-                    checks.append(calculate_business_date(complaint.dateAnswered, COMPLAINT_STAND_STILL_TIME, self))
+                    checks.append(calculate_business_date(complaint.dateAnswered, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
             for award in self.awards:
                 for complaint in award.complaints:
                     if complaint.status == 'claim' and complaint.dateSubmitted:
-                        checks.append(calculate_business_date(complaint.dateSubmitted, COMPLAINT_STAND_STILL_TIME, self))
+                        checks.append(calculate_business_date(complaint.dateSubmitted, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
                     elif complaint.status == 'answered' and complaint.dateAnswered:
-                        checks.append(calculate_business_date(complaint.dateAnswered, COMPLAINT_STAND_STILL_TIME, self))
+                        checks.append(calculate_business_date(complaint.dateAnswered, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
         return min(checks).isoformat() if checks else None
 
     def validate_procurementMethodDetails(self, *args, **kw):
