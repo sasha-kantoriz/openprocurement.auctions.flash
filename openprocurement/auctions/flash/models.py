@@ -35,12 +35,18 @@ from openprocurement.api.constants import (
 from openprocurement.api.interfaces import (
     IAwardingNextCheck
 )
-from openprocurement.api.models import (
+from openprocurement.api.models.schematics_extender import (
     IsoDateTimeType,
     ListType,
     Model,
+    TZ,
+)
+from openprocurement.api.models.models import (
+    Period,
+    PeriodEndRequired
+)
+from openprocurement.api.models.auction_models.models import (
     Value,
-    PeriodEndRequired,
     Revision,
     Cancellation,
     Feature,
@@ -49,11 +55,10 @@ from openprocurement.api.models import (
     validate_features_uniq,
     validate_items_uniq,
     validate_lots_uniq,
-    Period,
-    TZ,
     get_now,
     ComplaintModelType
 )
+
 from openprocurement.api.utils import (
     get_request_from_root
 )
