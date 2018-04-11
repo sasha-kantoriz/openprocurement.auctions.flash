@@ -28,41 +28,9 @@ from zope.interface import implementer
 
 from barbecue import vnmax
 
-from openprocurement.api.constants import (
-    SANDBOX_MODE,
-    AUCTIONS_COMPLAINT_STAND_STILL_TIME
-)
-from openprocurement.api.interfaces import (
+from openprocurement.auctions.core.includeme import (
     IAwardingNextCheck
 )
-from openprocurement.api.models.schematics_extender import (
-    IsoDateTimeType,
-    ListType,
-    Model,
-    TZ,
-)
-from openprocurement.api.models.models import (
-    Period,
-    PeriodEndRequired
-)
-from openprocurement.api.models.auction_models.models import (
-    Value,
-    Revision,
-    Cancellation,
-    Feature,
-    schematics_embedded_role,
-    schematics_default_role,
-    validate_features_uniq,
-    validate_items_uniq,
-    validate_lots_uniq,
-    get_now,
-    ComplaintModelType
-)
-
-from openprocurement.api.utils import (
-    get_request_from_root
-)
-
 from openprocurement.auctions.core.models import (
     IAuction,
     get_auction,
@@ -79,13 +47,34 @@ from openprocurement.auctions.core.models import (
     Bid,
     Question,
     Lot,
+    IsoDateTimeType,
+    ListType,
+    Model,
+    TZ,
+    Period,
+    PeriodEndRequired,
+    Value,
+    Revision,
+    Cancellation,
+    Feature,
+    schematics_embedded_role,
+    schematics_default_role,
+    validate_features_uniq,
+    validate_items_uniq,
+    validate_lots_uniq,
+    get_now,
+    ComplaintModelType
 )
-
 from openprocurement.auctions.core.plugins.awarding.v1.models import (
     Award
 )
 from openprocurement.auctions.core.plugins.contracting.v1.models import (
     Contract
+)
+from openprocurement.auctions.core.utils import (
+    SANDBOX_MODE,
+    AUCTIONS_COMPLAINT_STAND_STILL_TIME,
+    get_request_from_root,
 )
 
 
@@ -483,7 +472,7 @@ class Auction(SchematicsDocument, Model):
             if awarding_check is not None:
                 checks.append(awarding_check)  
         if self.status.startswith('active'):
-            from openprocurement.api.utils import calculate_business_date
+            from openprocurement.auctions.core.utils import calculate_business_date
             for complaint in self.complaints:
                 if complaint.status == 'claim' and complaint.dateSubmitted:
                     checks.append(calculate_business_date(complaint.dateSubmitted, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))

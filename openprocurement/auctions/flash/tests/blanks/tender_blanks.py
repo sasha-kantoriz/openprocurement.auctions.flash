@@ -2,12 +2,11 @@
 from copy import deepcopy
 from datetime import timedelta
 
-from openprocurement.api.models.auction_models.models import get_now
-from openprocurement.api.constants import SANDBOX_MODE
+from openprocurement.auctions.core.tests.base import JSON_RENDERER_ERROR
+from openprocurement.auctions.core.utils import get_now, SANDBOX_MODE
 
 from openprocurement.auctions.flash.models import Auction
 from openprocurement.auctions.flash.tests.base import test_auction_data, test_organization
-from openprocurement.api.tests.base import JSON_RENDERER_ERROR
 
 # AuctionTest
 

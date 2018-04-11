@@ -1,12 +1,13 @@
 from pyramid.interfaces import IRequest
 
-from openprocurement.api.interfaces import (
-    IContentConfigurator,
-    IAwardingNextCheck
+from openprocurement.auctions.core.includeme import (
+    IAwardingNextCheck,
+    IContentConfigurator
 )
 from openprocurement.auctions.core.plugins.awarding.v1.adapters import (
     AwardingNextCheckV1
 )
+
 from openprocurement.auctions.flash.models import Auction, IFlashAuction
 from openprocurement.auctions.flash.adapters import AuctionFlashConfigurator
 from openprocurement.auctions.flash.constants import VIEW_LOCATIONS
