@@ -45,6 +45,9 @@ from openprocurement.api.models.models import (
     Period,
     PeriodEndRequired
 )
+from openprocurement.api.validation import (
+    validate_items_uniq,
+)
 from openprocurement.api.models.auction_models.models import (
     Value,
     Revision,
@@ -53,12 +56,10 @@ from openprocurement.api.models.auction_models.models import (
     schematics_embedded_role,
     schematics_default_role,
     validate_features_uniq,
-    validate_items_uniq,
     validate_lots_uniq,
     get_now,
     ComplaintModelType
 )
-
 from openprocurement.api.utils import (
     get_request_from_root
 )
