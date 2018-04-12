@@ -8,10 +8,13 @@ from requests.models import Response
 from urllib import urlencode
 from uuid import uuid4
 
-from openprocurement.api.constants import VERSION, SESSION, SANDBOX_MODE
-from openprocurement.api.utils import apply_data_patch
-
 from openprocurement.auctions.core.tests.base import BaseWebTest as CoreBaseWebTest
+from openprocurement.auctions.core.utils import (
+    apply_data_patch,
+    SANDBOX_MODE,
+    SESSION,
+    VERSION,
+)
 
 
 now = datetime.now()

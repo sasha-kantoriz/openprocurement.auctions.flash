@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
+from openprocurement.auctions.core.tests.base import JSON_RENDERER_ERROR
+
 from openprocurement.auctions.flash.tests.base import test_organization
-from openprocurement.api.tests.base import JSON_RENDERER_ERROR
 
 # AuctionBidderResourceTest
 

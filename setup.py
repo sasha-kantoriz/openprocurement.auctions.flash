@@ -36,7 +36,6 @@ setup(name='openprocurement.auctions.flash',
       zip_safe=False,
       install_requires=[
           'setuptools',
-          'openprocurement.api',
           'openprocurement.auctions.core',
       ],
       entry_points=entry_points,
