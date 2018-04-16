@@ -122,7 +122,7 @@ class AuctionLotFeatureBidderResourceTest(BaseAuctionWebTest):
 
 
 class AuctionLotProcessTest(BaseAuctionWebTest, AuctionLotProcessTestMixin):
-    setUp = BaseWebTest.setUp
+    setUp = BaseAuctionWebTest.setUp
     initial_organization = test_organization
     test_lots = test_lots
     test_auction_data = test_auction_data

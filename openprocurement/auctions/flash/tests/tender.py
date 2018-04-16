@@ -61,7 +61,7 @@ class AuctionResourceTest(BaseWebTest, AuctionResourceTestMixin):
 
 
 class AuctionProcessTest(BaseAuctionWebTest):
-    setUp = BaseWebTest.setUp
+    setUp = BaseAuctionWebTest.setUp
     initial_organization = test_organization
 
     test_invalid_auction_conditions = snitch(invalid_auction_conditions)
