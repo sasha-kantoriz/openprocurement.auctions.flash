@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 import logging
+
+from pyramid.config import Configurator
+
 from openprocurement.auctions.core.traversal import Root
 from openprocurement.auctions.flash.models import Auction
 
@@ -20,6 +23,8 @@ def set_db_schema_version(db, version):
 
 
 def migrate_data(registry, destination=None):
+    if isinstance(registry, Configurator):
+        registry = registry.registry
     if registry.settings.get('plugins') and 'auctions.core' not in registry.settings['plugins'].split(','):
         return
     cur_version = get_db_schema_version(registry.db)
@@ -31,7 +36,6 @@ def migrate_data(registry, destination=None):
         if migration_func:
             migration_func(registry)
         set_db_schema_version(registry.db, step + 1)
-
 
 def from0to1(registry):
     class Request(object):

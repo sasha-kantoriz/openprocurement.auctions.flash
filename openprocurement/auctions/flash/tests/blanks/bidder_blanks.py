@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+from openprocurement.auctions.core.tests.base import JSON_RENDERER_ERROR
+
 from openprocurement.auctions.flash.tests.base import test_organization
 
 # AuctionBidderResourceTest
@@ -31,8 +33,7 @@ def create_auction_bidder_invalid(self):
     self.assertEqual(response.content_type, 'application/json')
     self.assertEqual(response.json['status'], 'error')
     self.assertEqual(response.json['errors'], [
-        {u'description': u'Expecting value: line 1 column 1 (char 0)',
-            u'location': u'body', u'name': u'data'}
+        JSON_RENDERER_ERROR
     ])
 
     response = self.app.post_json(request_path, 'data', status=422)

@@ -1,44 +1,70 @@
 # -*- coding: utf-8 -*-
-import os
-from couchdb_schematics.document import SchematicsDocument
-from datetime import datetime, timedelta, time
-from iso8601 import parse_date, ParseError
-from pytz import timezone
-from pyramid.security import Allow
-from schematics.exceptions import ConversionError, ValidationError
-from schematics.models import Model as SchematicsModel
-from schematics.transforms import whitelist, blacklist, export_loop, convert
-from schematics.types import StringType, FloatType, IntType, URLType, BooleanType, BaseType, EmailType, MD5Type
-from schematics.types.compound import ModelType, DictType, ListType as BaseListType
-from schematics.types.serializable import serializable
-from uuid import uuid4
-from barbecue import vnmax
-from zope.interface import implementer, Interface
-from openprocurement.api.models import (
-    IsoDateTimeType, ListType, Model, Value, PeriodEndRequired, SANDBOX_MODE,
-    Classification, validate_dkpp, Document, Organization, Parameter, validate_parameters_uniq,
-    LotValue, Bid, Revision, Question,  Cancellation, Contract, Award, Feature,
-    Lot, schematics_embedded_role, schematics_default_role, ORA_CODES, WORKING_DAYS,
-    validate_features_uniq, validate_items_uniq, validate_lots_uniq, Period,
-    Complaint as BaseComplaint, TZ, get_now, set_parent, ComplaintModelType,
+from datetime import (
+    datetime,
+    timedelta,
+    time
 )
-from openprocurement.api.interfaces import (
+
+from couchdb_schematics.document import SchematicsDocument
+from pyramid.security import Allow
+from schematics.exceptions import ValidationError
+from schematics.transforms import (
+    blacklist
+)
+from schematics.types import (
+    StringType,
+    FloatType,
+    IntType,
+    URLType,
+    BooleanType,
+    BaseType
+)
+from schematics.types.compound import (
+    ModelType,
+    DictType,
+)
+from schematics.types.serializable import serializable
+from zope.interface import implementer
+
+from barbecue import vnmax
+
+from openprocurement.auctions.core.includeme import (
     IAwardingNextCheck
 )
-from openprocurement.api.utils import (
-    get_request_from_root
-)
+from openprocurement.auctions.core.utils import get_now
 from openprocurement.auctions.core.models import (
     IAuction,
     get_auction,
-    auction_view_role,
     flashComplaint as Complaint,
     flashItem as Item,
     Document,
     flash_auction_roles,
     flash_bid_roles,
     calc_auction_end_time,
-    COMPLAINT_STAND_STILL_TIME
+    Parameter,
+    Organization,
+    validate_parameters_uniq,
+    LotValue,
+    Bid,
+    Question,
+    Lot,
+    IsoDateTimeType,
+    ListType,
+    Model,
+    TZ,
+    Period,
+    PeriodEndRequired,
+    Value,
+    Revision,
+    Cancellation,
+    Feature,
+    schematics_embedded_role,
+    schematics_default_role,
+    validate_features_uniq,
+    validate_items_uniq,
+    validate_lots_uniq,
+    ComplaintModelType,
+    flashProcuringEntity,
 )
 from openprocurement.auctions.core.plugins.awarding.v1.models import (
     Award
@@ -46,6 +72,12 @@ from openprocurement.auctions.core.plugins.awarding.v1.models import (
 from openprocurement.auctions.core.plugins.contracting.v1.models import (
     Contract
 )
+from openprocurement.auctions.core.utils import (
+    SANDBOX_MODE,
+    AUCTIONS_COMPLAINT_STAND_STILL_TIME,
+    get_request_from_root,
+)
+
 
 class Guarantee(Model):
     amount = FloatType(required=True, min_value=0)  # Amount as a number.
@@ -130,44 +162,6 @@ class Location(Model):
     latitude = BaseType(required=True)
     longitude = BaseType(required=True)
     elevation = BaseType()
-
-
-class Document(Document):
-
-    documentType = StringType(choices=[
-        'auctionNotice', 'awardNotice', 'contractNotice',
-        'notice', 'biddingDocuments', 'technicalSpecifications',
-        'evaluationCriteria', 'clarifications', 'shortlistedFirms',
-        'riskProvisions', 'billOfQuantity', 'bidders', 'conflictOfInterest',
-        'debarments', 'evaluationReports', 'winningBid', 'complaints',
-        'contractSigned', 'contractArrangements', 'contractSchedule',
-        'contractAnnexe', 'contractGuarantees', 'subContract',
-        'eligibilityCriteria', 'contractProforma', 'commercialProposal',
-        'qualificationDocuments', 'eligibilityDocuments', 'tenderNotice',
-    ])
-
-    def validate_relatedItem(self, data, relatedItem):
-        if not relatedItem and data.get('documentOf') in ['item', 'lot']:
-            raise ValidationError(u'This field is required.')
-        if relatedItem and isinstance(data['__parent__'], Model):
-            auction = get_auction(data['__parent__'])
-            if data.get('documentOf') == 'lot' and relatedItem not in [i.id for i in auction.lots]:
-                raise ValidationError(u"relatedItem should be one of lots")
-            if data.get('documentOf') == 'item' and relatedItem not in [i.id for i in auction.items]:
-                raise ValidationError(u"relatedItem should be one of items")
-
-
-class ProcuringEntity(Organization):
-    """An organization."""
-    class Options:
-        roles = {
-            'embedded': schematics_embedded_role,
-            'view': schematics_default_role,
-            'edit_active.enquiries': schematics_default_role + blacklist("kind"),
-            'edit_active.tendering': schematics_default_role + blacklist("kind"),
-        }
-
-    kind = StringType(choices=['general', 'special', 'defense', 'other'])
 
 
 class Parameter(Parameter):
@@ -356,7 +350,7 @@ class Auction(SchematicsDocument, Model):
     numberOfBidders = IntType()  # The number of unique tenderers who participated in the auction
     #numberOfBids = IntType()  # The number of bids or submissions to the auction. In the case of an auction, the number of bids may differ from the numberOfBidders.
     bids = ListType(ModelType(Bid), default=list())  # A list of all the companies who entered submissions for the auction.
-    procuringEntity = ModelType(ProcuringEntity, required=True)  # The entity managing the procurement, which may be different from the buyer who is paying / using the items being procured.
+    procuringEntity = ModelType(flashProcuringEntity, required=True)  # The entity managing the procurement, which may be different from the buyer who is paying / using the items being procured.
     documents = ListType(ModelType(Document), default=list())  # All documents and attachments related to the auction.
     awards = ListType(ModelType(Award), default=list())
     contracts = ListType(ModelType(Contract), default=list())
@@ -466,18 +460,18 @@ class Auction(SchematicsDocument, Model):
             if awarding_check is not None:
                 checks.append(awarding_check)  
         if self.status.startswith('active'):
-            from openprocurement.api.utils import calculate_business_date
+            from openprocurement.auctions.core.utils import calculate_business_date
             for complaint in self.complaints:
                 if complaint.status == 'claim' and complaint.dateSubmitted:
-                    checks.append(calculate_business_date(complaint.dateSubmitted, COMPLAINT_STAND_STILL_TIME, self))
+                    checks.append(calculate_business_date(complaint.dateSubmitted, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
                 elif complaint.status == 'answered' and complaint.dateAnswered:
-                    checks.append(calculate_business_date(complaint.dateAnswered, COMPLAINT_STAND_STILL_TIME, self))
+                    checks.append(calculate_business_date(complaint.dateAnswered, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
             for award in self.awards:
                 for complaint in award.complaints:
                     if complaint.status == 'claim' and complaint.dateSubmitted:
-                        checks.append(calculate_business_date(complaint.dateSubmitted, COMPLAINT_STAND_STILL_TIME, self))
+                        checks.append(calculate_business_date(complaint.dateSubmitted, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
                     elif complaint.status == 'answered' and complaint.dateAnswered:
-                        checks.append(calculate_business_date(complaint.dateAnswered, COMPLAINT_STAND_STILL_TIME, self))
+                        checks.append(calculate_business_date(complaint.dateAnswered, AUCTIONS_COMPLAINT_STAND_STILL_TIME, self))
         return min(checks).isoformat() if checks else None
 
     def validate_procurementMethodDetails(self, *args, **kw):
