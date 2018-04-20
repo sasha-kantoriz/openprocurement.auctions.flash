@@ -5,3 +5,4 @@ VIEW_LOCATIONS = [
     "openprocurement.auctions.core.plugins",
 ]
 
+DEFAULT_PROCUREMENT_METHOD_TYPE = "exampleBelowThreshold"
