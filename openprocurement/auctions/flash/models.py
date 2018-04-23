@@ -318,6 +318,7 @@ class Auction(SchematicsDocument, Model):
             roles['{}_{}'.format(i.owner, i.owner_token)] = 'bid_owner'
         return roles
 
+    _procedure_type = "belowThreshold"
     title = StringType(required=True)
     title_en = StringType()
     title_ru = StringType()
@@ -375,7 +376,7 @@ class Auction(SchematicsDocument, Model):
     owner_token = StringType()
     owner = StringType()
 
-    procurementMethodType = StringType(default="belowThreshold")
+    procurementMethodType = StringType()
 
     create_accreditation = 1
     edit_accreditation = 2
