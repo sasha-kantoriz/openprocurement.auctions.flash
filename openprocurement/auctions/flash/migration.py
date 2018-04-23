@@ -4,6 +4,8 @@ import logging
 from pyramid.config import Configurator
 
 from openprocurement.auctions.core.traversal import Root
+from openprocurement.auctions.core.utils import get_plugins, read_yaml
+
 from openprocurement.auctions.flash.models import Auction
 
 LOGGER = logging.getLogger(__name__)
@@ -25,7 +27,9 @@ def set_db_schema_version(db, version):
 def migrate_data(registry, destination=None):
     if isinstance(registry, Configurator):
         registry = registry.registry
-    if registry.settings.get('plugins') and 'auctions.core' not in registry.settings['plugins'].split(','):
+    plugins_config = read_yaml(registry.settings.get('plugins'))
+    existing_plugins = get_plugins(plugins_config)
+    if registry.settings.get('plugins') and 'auctions.core' not in existing_plugins:
         return
     cur_version = get_db_schema_version(registry.db)
     if cur_version == SCHEMA_VERSION:
@@ -37,6 +41,7 @@ def migrate_data(registry, destination=None):
             migration_func(registry)
         set_db_schema_version(registry.db, step + 1)
 
+
 def from0to1(registry):
     class Request(object):
         def __init__(self, registry):
@@ -45,9 +50,14 @@ def from0to1(registry):
     docs = []
     request = Request(registry)
     root = Root(request)
+    pmtConfigurator = registry.pmtConfigurator
+    procurement_method_types = [
+        pmt for pmt in pmtConfigurator
+        if pmtConfigurator[pmt] == "belowThreshold"
+    ]
     for i in results:
         doc = i.doc
-        if doc['procurementMethodType'] != 'belowThreshold':
+        if doc['procurementMethodType'] not in procurement_method_types:
             continue
         auction = Auction(doc)
         auction.__parent__ = root

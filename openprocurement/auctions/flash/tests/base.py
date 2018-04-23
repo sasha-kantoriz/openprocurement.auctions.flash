@@ -1,23 +1,18 @@
 # -*- coding: utf-8 -*-
 import os
 import webtest
-from base64 import b64encode
-from copy import deepcopy
 from datetime import datetime, timedelta
-from requests.models import Response
-from urllib import urlencode
-from uuid import uuid4
 
 from openprocurement.auctions.core.tests.base import (
     BaseWebTest as CoreBaseWebTest,
     BaseAuctionWebTest as CoreBaseAuctionWebTest
 )
 from openprocurement.auctions.core.utils import (
-    apply_data_patch,
     SANDBOX_MODE,
-    SESSION,
     VERSION,
 )
+
+from openprocurement.auctions.flash.constants import DEFAULT_PROCUREMENT_METHOD_TYPE
 
 
 now = datetime.now()
@@ -91,7 +86,7 @@ test_auction_data = {
     "tenderPeriod": {
         "endDate": (now + timedelta(days=14)).isoformat()
     },
-    "procurementMethodType": "belowThreshold",
+    "procurementMethodType": DEFAULT_PROCUREMENT_METHOD_TYPE,
 }
 if SANDBOX_MODE:
     test_auction_data['procurementMethodDetails'] = 'quick, accelerator=1440'
