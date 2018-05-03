@@ -1,11 +1,15 @@
 ---
 plugins:
-  auctions.core:
+  api:
     plugins:
-      auctions.flash:
-        aliases: []
-        use_default: true
-        migration: false
+      auctions.core:
+        plugins:
+          auctions.flash:
+            plugins:
+              flash.migration:
+            aliases: []
+            use_default: true
+            migration: false
 
 config:
   auth:

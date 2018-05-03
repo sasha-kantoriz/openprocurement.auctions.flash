@@ -7,7 +7,7 @@ from openprocurement.auctions.core.includeme import (
 from openprocurement.auctions.core.plugins.awarding.v1.adapters import (
     AwardingNextCheckV1
 )
-
+from openprocurement.api.app import get_evenly_plugins
 from openprocurement.auctions.flash.models import Auction, IFlashAuction
 from openprocurement.auctions.flash.adapters import AuctionFlashConfigurator
 from openprocurement.auctions.flash.constants import (
@@ -16,9 +16,9 @@ from openprocurement.auctions.flash.constants import (
 )
 
 
-def includeme(config, plugin_config=None):
-    procurement_method_types = plugin_config.get('aliases', [])
-    if plugin_config.get('use_default', False):
+def includeme(config, plugin_map):
+    procurement_method_types = plugin_map.get('aliases', [])
+    if plugin_map.get('use_default', False):
         procurement_method_types.append(DEFAULT_PROCUREMENT_METHOD_TYPE)
     for procurementMethodType in procurement_method_types:
         config.add_auction_procurementMethodType(Auction,
@@ -39,3 +39,6 @@ def includeme(config, plugin_config=None):
         (IFlashAuction, ),
         IAwardingNextCheck
     )
+    # migrate data
+    if plugin_map['migration'] and not os.environ.get('MIGRATION_SKIP'):
+        get_evenly_plugins(config, plugin_map['plugins'], 'openprocurement.auctions.flash.plugins')
