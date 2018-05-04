@@ -4,7 +4,7 @@ import logging
 from pyramid.config import Configurator
 
 from openprocurement.auctions.core.traversal import Root
-from openprocurement.auctions.core.utils import get_plugins, read_yaml
+from openprocurement.auctions.core.utils import get_plugins
 
 from openprocurement.auctions.flash.models import Auction
 

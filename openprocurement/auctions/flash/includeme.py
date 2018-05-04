@@ -1,5 +1,5 @@
+import os
 from pyramid.interfaces import IRequest
-
 from openprocurement.auctions.core.includeme import (
     IAwardingNextCheck,
     IContentConfigurator
