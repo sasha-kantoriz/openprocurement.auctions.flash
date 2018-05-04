@@ -7,8 +7,8 @@ entry_points = {
     'openprocurement.auctions.core.plugins': [
         'auctions.flash = openprocurement.auctions.flash.includeme:includeme'
     ],
-    'openprocurement.api.migrations': [
-        'auctions.flash = openprocurement.auctions.flash.migration:migrate_data'
+    'openprocurement.auctions.flash.plugins': [
+        'flash.migration = openprocurement.auctions.flash.migration:migrate_data'
     ],
     'openprocurement.tests': [
         'auctions.flash = openprocurement.auctions.flash.tests.main:suite'
