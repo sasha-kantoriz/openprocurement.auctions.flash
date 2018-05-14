@@ -6,15 +6,8 @@ from openprocurement.auctions.core.includeme import (
     IAwardingNextCheck,
     IContentConfigurator
 )
-from openprocurement.auctions.core.plugins.awarding.base.interfaces import (
-    IAwardManagerAdapter,
-)
 from openprocurement.auctions.core.plugins.awarding.v1.adapters import (
     AwardingNextCheckV1,
-    AwardManagerV1Adapter,
-)
-from openprocurement.auctions.core.plugins.awarding.v1.interfaces import (
-    IAwardV1
 )
 from openprocurement.auctions.core.includeme import get_evenly_plugins
 from openprocurement.auctions.flash.adapters import AuctionFlashConfigurator
@@ -51,8 +44,3 @@ def includeme(config, plugin_map):
     # migrate data
     if plugin_map['migration'] and not os.environ.get('MIGRATION_SKIP'):
         get_evenly_plugins(config, plugin_map['plugins'], 'openprocurement.auctions.flash.plugins')
-    config.registry.registerAdapter(
-        AwardManagerV1Adapter,
-        (IAwardV1, ),
-        IAwardManagerAdapter
-    )
