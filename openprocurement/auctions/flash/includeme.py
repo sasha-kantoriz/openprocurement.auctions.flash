@@ -1,4 +1,6 @@
+# -*- coding: utf-8 -*-
 import os
+
 from pyramid.interfaces import IRequest
 from openprocurement.auctions.core.includeme import (
     IAwardingNextCheck,
@@ -6,7 +8,7 @@ from openprocurement.auctions.core.includeme import (
 )
 from openprocurement.auctions.core.interfaces import IAuctionManager
 from openprocurement.auctions.core.plugins.awarding.v1.adapters import (
-    AwardingNextCheckV1
+    AwardingNextCheckV1,
 )
 from openprocurement.auctions.core.includeme import get_evenly_plugins
 from openprocurement.auctions.flash.models import Auction, IFlashAuction
@@ -15,8 +17,8 @@ from openprocurement.auctions.flash.adapters import (
     AuctionFlashManagerAdapter
 )
 from openprocurement.auctions.flash.constants import (
+    DEFAULT_PROCUREMENT_METHOD_TYPE,
     VIEW_LOCATIONS,
-    DEFAULT_PROCUREMENT_METHOD_TYPE
 )
 
 
