@@ -36,8 +36,18 @@ class AuctionContractResourceTest(
     def setUp(self):
         super(AuctionContractResourceTest, self).setUp()
         # Create award
-        response = self.app.post_json('/auctions/{}/awards'.format(
-            self.auction_id), {'data': {'suppliers': [test_organization], 'status': 'pending', 'bid_id': self.initial_bids[0]['id'], 'value': test_auction_data["value"], 'items': test_auction_data["items"]}})
+        response = self.app.post_json(
+            '/auctions/{}/awards'.format(self.auction_id),
+            {'data':
+                {
+                    'suppliers': [test_organization],
+                    'status': 'pending',
+                    'bid_id': self.initial_bids[0]['id'],
+                    'value': test_auction_data["value"],
+                    'items': test_auction_data["items"]
+                }
+            }
+        )
         award = response.json['data']
         self.award_id = award['id']
         self.award_value = award['value']

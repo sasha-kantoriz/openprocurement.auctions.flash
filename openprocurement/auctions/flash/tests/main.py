@@ -3,7 +3,18 @@
 import unittest
 
 from openprocurement.auctions.flash.tests import (
-    auction, award, bidder, cancellation, chronograph, contract, document, lot, migration, tender, question, complaint
+    auction,
+    award,
+    bidder,
+    cancellation,
+    chronograph,
+    contract,
+    document,
+    lot,
+    migration,
+    tender,
+    question,
+    complaint,
 )
 
 
