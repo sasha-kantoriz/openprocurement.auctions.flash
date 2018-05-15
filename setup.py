@@ -15,6 +15,15 @@ entry_points = {
     ]
 }
 
+requirements = [
+    'setuptools',
+    'openprocurement.auctions.core',
+    'openprocurement.schemas.dgf',
+    'schematics-flexible'
+]
+
+test_requirements = requirements + []
+
 setup(name='openprocurement.auctions.flash',
       version=version,
       description="",
@@ -34,11 +43,7 @@ setup(name='openprocurement.auctions.flash',
       namespace_packages=['openprocurement', 'openprocurement.auctions'],
       include_package_data=True,
       zip_safe=False,
-      install_requires=[
-          'setuptools',
-          'openprocurement.auctions.core',
-          'openprocurement.schemas.dgf',
-          'schematics-flexible'
-      ],
+      install_requires=requirements,
+      extras_require={'test': test_requirements},
       entry_points=entry_points,
       )
